@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, Field, model_validator
+from pydantic import AwareDatetime, Field, field_validator, model_validator
 
 from oscillink_agent.domain.events import ActorId, Digest, FrozenModel, Sensitivity
 
@@ -56,8 +57,20 @@ class MemoryClaim(FrozenModel):
     review_state: ReviewState
     sensitivity: Sensitivity
 
+    @field_validator("source_refs")
+    @classmethod
+    def require_unique_source_refs(
+        cls, value: tuple[RecordRef, ...]
+    ) -> tuple[RecordRef, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("memory source references must be unique")
+        return value
+
     @model_validator(mode="after")
     def require_ordered_validity(self) -> MemoryClaim:
+        expected_hash = "sha256:" + hashlib.sha256(self.content.encode("utf-8")).hexdigest()
+        if self.content_hash != expected_hash:
+            raise ValueError("content_hash does not match claim content")
         if (
             self.valid_from is not None
             and self.valid_until is not None

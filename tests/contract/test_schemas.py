@@ -51,6 +51,68 @@ def test_event_schema_requires_model_provenance_for_model_calls() -> None:
         validate("event.schema.json", event)
 
 
+def test_event_schema_requires_model_provenance_for_model_actors() -> None:
+    event = complete_event()
+    event["actor"] = {"id": "model_qwen3_14b", "type": "model"}
+    event["trust_class"] = "model_generated"
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_prevents_model_actor_from_claiming_human_trust() -> None:
+    event = complete_event()
+    event["actor"] = {"id": "model_qwen3_14b", "type": "model"}
+    event["model"] = {
+        "provider": "ollama",
+        "name": "qwen3:14b",
+        "configuration_hash": "sha256:" + "9" * 64,
+    }
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_payloads_with_too_many_properties() -> None:
+    event = complete_event()
+    event["payload"] = {f"field_{index}": index for index in range(65)}
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_oversized_nested_payload_arrays() -> None:
+    event = complete_event()
+    event["payload"] = {"items": list(range(65))}
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_payloads_nested_beyond_two_levels() -> None:
+    event = complete_event()
+    event["payload"] = {"outer": {"middle": {"inner": {"value": 1}}}}
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_oversized_payload_strings() -> None:
+    event = complete_event()
+    event["payload"] = {"text": "x" * 16_385}
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_oversized_payload_property_names() -> None:
+    event = complete_event()
+    event["payload"] = {"k" * 129: "value"}
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
 def complete_context_manifest() -> dict[str, Any]:
     return {
         "id": "ctx_01J00000000000000000000000",
@@ -58,7 +120,7 @@ def complete_context_manifest() -> dict[str, Any]:
         "task_id": "tsk_01J00000000000000000000000",
         "compiled_at": "2026-08-27T18:50:00Z",
         "token_budget": 8192,
-        "total_token_count": 512,
+        "total_token_count": 64,
         "policy_hash": "sha256:" + "c" * 64,
         "items": [
             {
@@ -85,11 +147,11 @@ def complete_capability_grant() -> dict[str, Any]:
         "subject_actor_id": "model_qwen3_14b",
         "capability": "file.read",
         "resource": {
-            "root": "C:/Users/Maverick/Projects/oscillink-agent",
+            "scope_id": "repo_oscillink_agent",
             "target": "README.md",
         },
         "issued_at": "2026-08-27T18:55:00Z",
-        "expires_at": "2026-08-27T19:00:00Z",
+        "valid_for_seconds": 300,
         "issued_by": "human_maverick",
         "authorization_event_id": "evt_01J00000000000000000000000",
         "max_uses": 1,
@@ -105,6 +167,22 @@ def test_capability_grant_schema_accepts_single_use_file_read() -> None:
     validate("capability-grant.schema.json", complete_capability_grant())
 
 
+def test_capability_grant_schema_rejects_windows_device_names() -> None:
+    grant = complete_capability_grant()
+    grant["resource"]["target"] = "CON"
+
+    with pytest.raises(ValidationError):
+        validate("capability-grant.schema.json", grant)
+
+
+def test_capability_grant_schema_rejects_targets_with_trailing_dots() -> None:
+    grant = complete_capability_grant()
+    grant["resource"]["target"] = "reports/result."
+
+    with pytest.raises(ValidationError):
+        validate("capability-grant.schema.json", grant)
+
+
 def complete_benchmark_manifest() -> dict[str, Any]:
     return {
         "id": "bmk_01J00000000000000000000000",
@@ -115,10 +193,10 @@ def complete_benchmark_manifest() -> dict[str, Any]:
         "task_set_hash": "sha256:" + "e" * 64,
         "hidden_labels": "external",
         "conditions": ["no_memory", "raw_transcript", "fts5_evidence"],
-        "metrics": [
-            {"name": "task_success", "direction": "maximize"},
-            {"name": "critical_provenance_failures", "direction": "minimize"},
-        ],
+        "metrics": {
+            "task_success": "maximize",
+            "critical_provenance_failures": "minimize",
+        },
         "budgets": {
             "max_tokens": 8192,
             "max_seconds": 120,
@@ -138,6 +216,30 @@ def test_benchmark_manifest_schema_accepts_frozen_external_evaluation() -> None:
     validate("benchmark-manifest.schema.json", complete_benchmark_manifest())
 
 
+def complete_memory_claim() -> dict[str, Any]:
+    content = "Oscillink Agent uses a local open-weight model first."
+    return {
+        "id": "clm_01J00000000000000000000000",
+        "schema_version": 1,
+        "epistemic_class": "user_assertion",
+        "status": "supported",
+        "subject_id": "project_oscillink_agent",
+        "content": content,
+        "valid_from": "2026-08-01T00:00:00Z",
+        "valid_until": None,
+        "recorded_at": "2026-08-27T19:05:00Z",
+        "source_refs": ["evt_01J00000000000000000000000"],
+        "content_hash": "sha256:" + "f" * 64,
+        "asserted_by": "human_maverick",
+        "review_state": "approved",
+        "sensitivity": "private",
+    }
+
+
+def test_memory_claim_schema_accepts_bitemporal_claim() -> None:
+    validate("memory-claim.schema.json", complete_memory_claim())
+
+
 @pytest.mark.parametrize(
     "schema_name",
     [
@@ -145,6 +247,7 @@ def test_benchmark_manifest_schema_accepts_frozen_external_evaluation() -> None:
         "context-manifest.schema.json",
         "capability-grant.schema.json",
         "benchmark-manifest.schema.json",
+        "memory-claim.schema.json",
     ],
 )
 def test_schema_is_valid_draft_2020_12(schema_name: str) -> None:

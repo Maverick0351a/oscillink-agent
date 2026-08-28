@@ -11,7 +11,7 @@
     "capability",
     "resource",
     "issued_at",
-    "expires_at",
+    "valid_for_seconds",
     "issued_by",
     "authorization_event_id",
     "max_uses",
@@ -25,14 +25,23 @@
     "resource": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["root", "target"],
+      "required": ["scope_id", "target"],
       "properties": {
-        "root": {"type": "string", "minLength": 1},
-        "target": {"type": "string", "minLength": 1}
+        "scope_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{2,63}$"
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?(?:/[A-Za-z0-9_-](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?)*$",
+          "not": {
+            "pattern": "(?:^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.[^/]*)?(?:/|$)"
+          }
+        }
       }
     },
     "issued_at": {"type": "string", "format": "date-time"},
-    "expires_at": {"type": "string", "format": "date-time"},
+    "valid_for_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
     "issued_by": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$"},
     "authorization_event_id": {
       "type": "string",

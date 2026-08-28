@@ -72,16 +72,17 @@
       ]
     },
     "sensitivity": {"enum": ["public", "internal", "private", "restricted"]},
-    "payload": {"type": "object"},
-    "model": {
+    "payload": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["provider", "name", "configuration_hash"],
-      "properties": {
-        "provider": {"type": "string", "minLength": 1},
-        "name": {"type": "string", "minLength": 1},
-        "configuration_hash": {"$ref": "#/$defs/digest"}
-      }
+      "maxProperties": 64,
+      "propertyNames": {"maxLength": 128},
+      "additionalProperties": {"$ref": "#/$defs/json_value"}
+    },
+    "model": {
+      "anyOf": [
+        {"$ref": "#/$defs/model_identity"},
+        {"type": "null"}
+      ]
     }
   },
   "allOf": [
@@ -90,13 +91,84 @@
         "properties": {"event_type": {"const": "model_call"}},
         "required": ["event_type"]
       },
-      "then": {"required": ["model"]}
+      "then": {
+        "required": ["model"],
+        "properties": {"model": {"$ref": "#/$defs/model_identity"}}
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {"type": {"const": "model"}},
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "required": ["model"],
+        "properties": {
+          "model": {"$ref": "#/$defs/model_identity"},
+          "trust_class": {"const": "model_generated"}
+        }
+      }
     }
   ],
   "$defs": {
     "digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "json_value": {
+      "anyOf": [
+        {"$ref": "#/$defs/json_scalar"},
+        {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/json_value_level_2"}
+        },
+        {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {"maxLength": 128},
+          "additionalProperties": {"$ref": "#/$defs/json_value_level_2"}
+        }
+      ]
+    },
+    "json_value_level_2": {
+      "anyOf": [
+        {"$ref": "#/$defs/json_scalar"},
+        {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"$ref": "#/$defs/json_scalar"}
+        },
+        {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {"maxLength": 128},
+          "additionalProperties": {"$ref": "#/$defs/json_scalar"}
+        }
+      ]
+    },
+    "json_scalar": {
+      "anyOf": [
+        {"type": "string", "maxLength": 16384},
+        {"type": "number"},
+        {"type": "boolean"},
+        {"type": "null"}
+      ]
+    },
+    "model_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "name", "configuration_hash"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "configuration_hash": {"$ref": "#/$defs/digest"}
+      }
     }
   }
 }

@@ -182,7 +182,8 @@ oscillink-agent/
 │   ├── event.schema.json
 │   ├── context-manifest.schema.json
 │   ├── capability-grant.schema.json
-│   └── benchmark-manifest.schema.json
+│   ├── benchmark-manifest.schema.json
+│   └── memory-claim.schema.json
 ├── src/oscillink_agent/
 │   ├── __init__.py
 │   ├── api.py
@@ -191,7 +192,8 @@ oscillink-agent/
 │   │   ├── events.py
 │   │   ├── memory.py
 │   │   ├── context.py
-│   │   └── capabilities.py
+│   │   ├── capabilities.py
+│   │   └── benchmarks.py
 │   ├── providers/
 │   │   ├── base.py
 │   │   └── openai_compatible.py
