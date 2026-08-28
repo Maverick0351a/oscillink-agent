@@ -1,6 +1,6 @@
 # Oscillink Agent Local-to-Cloud Implementation Plan
 
-> **For Hermes:** Execute this plan task-by-task with TDD and independent review at phase gates.
+> **For Hermes:** Execute this plan task-by-task with strict TDD and deterministic local self-review at phase gates; do not use reviewer subagents or temporary review worktrees.
 
 **Goal:** Build Oscillink Agent as a locally hosted, open-weight personal agent that develops durable, provenance-linked continuity with Maverick and can later move to scalable cloud infrastructure without rewriting its core contracts.
 
