@@ -12,7 +12,10 @@ Build a governed, model-agnostic longitudinal agent. Do not claim AGI, conscious
 - Keep domain contracts independent of infrastructure implementations.
 - Keep local/cloud backend selection in configuration and adapters.
 - Prefer the smallest implementation that satisfies a tested contract.
-- Run pytest, Ruff and mypy before each milestone commit.
+- Run `scripts/verify.py --base HEAD` before each milestone commit.
+- After committing, run `scripts/verify.py --base HEAD^ --require-clean` against the immutable range.
+- Use deterministic self-review and local reproduction; do not use reviewer subagents or temporary review worktrees.
+- Stop after two unsuccessful remediation cycles and report the remaining evidence instead of expanding scope indefinitely.
 - Preserve LF line endings.
 
 ## Authority and data
@@ -36,3 +39,5 @@ Build a governed, model-agnostic longitudinal agent. Do not claim AGI, conscious
 ## Verification
 
 Claims of completion require real command output. Model self-report is not verification. Use deterministic evaluators where possible and compare candidates with parents under equal budgets.
+
+The complete local review and troubleshooting procedure is documented in `docs/review-process.md`.
