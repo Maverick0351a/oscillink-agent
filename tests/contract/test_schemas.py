@@ -43,6 +43,24 @@ def test_event_schema_accepts_complete_event() -> None:
     validate("event.schema.json", complete_event())
 
 
+@pytest.mark.parametrize(
+    ("actor_id", "actor_type"),
+    [
+        ("tool_fetcher", "human"),
+        ("human_maverick", "model"),
+        ("system_runtime", "tool"),
+        ("model_qwen3", "system"),
+    ],
+)
+def test_event_schema_rejects_actor_id_type_mismatch(
+    actor_id: str, actor_type: str
+) -> None:
+    actor_schema = load_schema("event.schema.json")["properties"]["actor"]
+
+    with pytest.raises(ValidationError):
+        Draft202012Validator(actor_schema).validate({"id": actor_id, "type": actor_type})
+
+
 def test_event_schema_requires_model_provenance_for_model_calls() -> None:
     event = complete_event()
     event["event_type"] = "model_call"
@@ -68,6 +86,26 @@ def test_event_schema_prevents_model_actor_from_claiming_human_trust() -> None:
         "name": "qwen3:14b",
         "configuration_hash": "sha256:" + "9" * 64,
     }
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_model_identity_on_unrelated_human_event() -> None:
+    event = complete_event()
+    event["model"] = {
+        "provider": "ollama",
+        "name": "qwen3:14b",
+        "configuration_hash": "sha256:" + "9" * 64,
+    }
+
+    with pytest.raises(ValidationError):
+        validate("event.schema.json", event)
+
+
+def test_event_schema_rejects_numbers_outside_rfc_8785_safe_range() -> None:
+    event = complete_event()
+    event["payload"] = {"value": 9_007_199_254_740_992}
 
     with pytest.raises(ValidationError):
         validate("event.schema.json", event)
@@ -192,9 +230,26 @@ def complete_benchmark_manifest() -> dict[str, Any]:
         "created_at": "2026-08-27T19:00:00Z",
         "task_set_hash": "sha256:" + "e" * 64,
         "hidden_labels": "external",
-        "conditions": ["no_memory", "raw_transcript", "fts5_evidence"],
+        "conditions": [
+            "no_memory",
+            "raw_transcript",
+            "hand_markdown",
+            "generated_summary",
+            "fts5_evidence",
+            "provenance_evidence",
+        ],
         "metrics": {
-            "task_success": "maximize",
+            "correctness": "maximize",
+            "citation_precision": "maximize",
+            "evidence_recall": "maximize",
+            "temporal_accuracy": "maximize",
+            "obsolete_memory_reuse": "minimize",
+            "contradiction_detection": "maximize",
+            "abstention": "maximize",
+            "unsafe_instruction_following": "minimize",
+            "latency": "minimize",
+            "tokens": "minimize",
+            "correction_burden": "minimize",
             "critical_provenance_failures": "minimize",
         },
         "budgets": {
@@ -208,7 +263,16 @@ def complete_benchmark_manifest() -> dict[str, Any]:
             "require_equal_budgets": True,
             "require_external_verification": True,
         },
-        "threat_cases": ["memory_poisoning", "stale_state", "permission_escalation"],
+        "threat_cases": [
+            "memory_poisoning",
+            "stale_state",
+            "permission_escalation",
+            "cross_scope_retrieval",
+            "unsupported_completion",
+            "secret_exposure",
+            "contradiction_handling",
+            "provenance_omission",
+        ],
     }
 
 
@@ -232,6 +296,7 @@ def complete_memory_claim() -> dict[str, Any]:
         "content_hash": "sha256:" + "f" * 64,
         "asserted_by": "human_maverick",
         "review_state": "approved",
+        "review_event_id": "evt_01J00000000000000000000001",
         "sensitivity": "private",
     }
 

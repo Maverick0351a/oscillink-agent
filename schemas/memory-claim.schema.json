@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://oscillink.com/schemas/agent/memory-claim.schema.json",
   "title": "Oscillink Agent Memory Claim",
+  "$comment": "Structural validation only. Pydantic enforces temporal/hash/self-support semantics; trusted storage must authenticate review_event_id before canonical promotion.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,6 +19,7 @@
     "content_hash",
     "asserted_by",
     "review_state",
+    "review_event_id",
     "sensitivity"
   ],
   "properties": {
@@ -49,17 +51,17 @@
     "content": {"type": "string", "minLength": 1},
     "valid_from": {
       "anyOf": [
-        {"type": "string", "format": "date-time"},
+        {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
         {"type": "null"}
       ]
     },
     "valid_until": {
       "anyOf": [
-        {"type": "string", "format": "date-time"},
+        {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
         {"type": "null"}
       ]
     },
-    "recorded_at": {"type": "string", "format": "date-time"},
+    "recorded_at": {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "source_refs": {
       "type": "array",
       "minItems": 1,
@@ -75,8 +77,31 @@
       "pattern": "^(human|model|tool|system)_[a-z0-9][a-z0-9_-]{1,62}$"
     },
     "review_state": {"enum": ["unreviewed", "approved", "rejected"]},
+    "review_event_id": {
+      "anyOf": [
+        {"type": "string", "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"},
+        {"type": "null"}
+      ]
+    },
     "sensitivity": {"enum": ["public", "internal", "private", "restricted"]}
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"review_state": {"const": "unreviewed"}},
+        "required": ["review_state"]
+      },
+      "then": {"properties": {"review_event_id": {"type": "null"}}},
+      "else": {
+        "properties": {
+          "review_event_id": {
+            "type": "string",
+            "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "digest": {
       "type": "string",

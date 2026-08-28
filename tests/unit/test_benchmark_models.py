@@ -8,7 +8,8 @@ from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import ValidationError
 
-from oscillink_agent.domain.benchmarks import BenchmarkManifest
+from oscillink_agent.domain.benchmarks import BenchmarkCondition, BenchmarkManifest
+from oscillink_agent.domain.events import MAX_INTEROPERABLE_JSON_INTEGER
 
 SCHEMA_PATH = Path(__file__).parents[2] / "schemas" / "benchmark-manifest.schema.json"
 
@@ -22,9 +23,26 @@ def benchmark_manifest_data() -> dict[str, object]:
         "created_at": "2026-08-27T19:00:00Z",
         "task_set_hash": "sha256:" + "e" * 64,
         "hidden_labels": "external",
-        "conditions": ["no_memory", "raw_transcript", "fts5_evidence"],
+        "conditions": [
+            "no_memory",
+            "raw_transcript",
+            "hand_markdown",
+            "generated_summary",
+            "fts5_evidence",
+            "provenance_evidence",
+        ],
         "metrics": {
-            "task_success": "maximize",
+            "correctness": "maximize",
+            "citation_precision": "maximize",
+            "evidence_recall": "maximize",
+            "temporal_accuracy": "maximize",
+            "obsolete_memory_reuse": "minimize",
+            "contradiction_detection": "maximize",
+            "abstention": "maximize",
+            "unsafe_instruction_following": "minimize",
+            "latency": "minimize",
+            "tokens": "minimize",
+            "correction_burden": "minimize",
             "critical_provenance_failures": "minimize",
         },
         "budgets": {
@@ -38,7 +56,16 @@ def benchmark_manifest_data() -> dict[str, object]:
             "require_equal_budgets": True,
             "require_external_verification": True,
         },
-        "threat_cases": ["memory_poisoning", "stale_state", "permission_escalation"],
+        "threat_cases": [
+            "memory_poisoning",
+            "stale_state",
+            "permission_escalation",
+            "cross_scope_retrieval",
+            "unsupported_completion",
+            "secret_exposure",
+            "contradiction_handling",
+            "provenance_omission",
+        ],
     }
 
 
@@ -53,6 +80,35 @@ def test_benchmark_manifest_round_trips_through_schema_and_is_frozen() -> None:
 
     with pytest.raises(ValidationError):
         manifest.name = "changed"  # type: ignore[misc]
+
+
+def test_benchmark_budget_integer_bounds_match_schema_and_model() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    budget_fields = ("max_tokens", "max_seconds", "max_tool_calls", "max_retries")
+    accepted = benchmark_manifest_data()
+    for field in budget_fields:
+        accepted["budgets"][field] = MAX_INTEROPERABLE_JSON_INTEGER
+
+    BenchmarkManifest.model_validate_json(json.dumps(accepted))
+    validator.validate(accepted)
+
+    for field in budget_fields:
+        rejected = benchmark_manifest_data()
+        rejected["budgets"][field] = MAX_INTEROPERABLE_JSON_INTEGER + 1
+        with pytest.raises(ValidationError):
+            BenchmarkManifest.model_validate_json(json.dumps(rejected))
+        with pytest.raises(SchemaValidationError):
+            validator.validate(rejected)
+
+
+def test_benchmark_manifest_dump_detects_coverage_tampering() -> None:
+    manifest = BenchmarkManifest.model_validate_json(json.dumps(benchmark_manifest_data()))
+    manifest_state = object.__getattribute__(manifest, "__dict__")
+    manifest_state["conditions"] = (BenchmarkCondition.NO_MEMORY,)
+
+    with pytest.raises(ValueError, match="conditions|changed after construction"):
+        manifest.model_dump(mode="json")
 
 
 def test_benchmark_metrics_are_immutable() -> None:
@@ -73,6 +129,16 @@ def test_benchmark_rejects_duplicate_conditions() -> None:
 def test_benchmark_rejects_duplicate_threat_cases() -> None:
     data = benchmark_manifest_data()
     data["threat_cases"] = ["memory_poisoning", "memory_poisoning"]
+
+    with pytest.raises(ValidationError):
+        BenchmarkManifest.model_validate_json(json.dumps(data))
+
+
+def test_benchmark_manifest_rejects_incomplete_promotion_coverage() -> None:
+    data = benchmark_manifest_data()
+    data["conditions"] = ["no_memory"]
+    data["metrics"] = {"foo": "maximize"}
+    data["threat_cases"] = ["stale_state"]
 
     with pytest.raises(ValidationError):
         BenchmarkManifest.model_validate_json(json.dumps(data))

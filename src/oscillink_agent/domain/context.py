@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Annotated
 
-from pydantic import AwareDatetime, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
-from oscillink_agent.domain.events import Digest, FrozenModel, TaskId, TrustClass
+from oscillink_agent.domain.events import (
+    ContractDatetime,
+    Digest,
+    FrozenModel,
+    JsonInteger,
+    SchemaVersion,
+    TaskId,
+    TrustClass,
+)
 
 ContextId = Annotated[str, Field(pattern=r"^ctx_[0-9A-HJKMNP-TV-Z]{26}$")]
 RecordId = Annotated[str, Field(pattern=r"^(evt|clm|doc|prc)_[0-9A-HJKMNP-TV-Z]{26}$")]
@@ -26,7 +34,7 @@ class ContextItem(FrozenModel):
     inclusion_reason: Annotated[str, Field(min_length=1)]
     trust_class: TrustClass
     status: ContextStatus
-    token_count: Annotated[int, Field(ge=0)]
+    token_count: Annotated[JsonInteger, Field(ge=0)]
     source_refs: Annotated[tuple[RecordId, ...], Field(min_length=1)]
 
     @field_validator("source_refs")
@@ -41,11 +49,11 @@ class ContextItem(FrozenModel):
 
 class ContextManifest(FrozenModel):
     id: ContextId
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     task_id: TaskId
-    compiled_at: AwareDatetime
-    token_budget: Annotated[int, Field(ge=1)]
-    total_token_count: Annotated[int, Field(ge=0)]
+    compiled_at: ContractDatetime
+    token_budget: Annotated[JsonInteger, Field(ge=1)]
+    total_token_count: Annotated[JsonInteger, Field(ge=0)]
     policy_hash: Digest
     items: tuple[ContextItem, ...]
 

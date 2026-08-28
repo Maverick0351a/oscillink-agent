@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://oscillink.com/schemas/agent/context-manifest.schema.json",
   "title": "Oscillink Agent Context Manifest",
+  "$comment": "Structural validation only. Pydantic enforces exact token summation and budget relationships; trusted compilation resolves referenced records.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,9 +19,9 @@
     "id": {"type": "string", "pattern": "^ctx_[0-9A-HJKMNP-TV-Z]{26}$"},
     "schema_version": {"const": 1},
     "task_id": {"type": "string", "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$"},
-    "compiled_at": {"type": "string", "format": "date-time"},
-    "token_budget": {"type": "integer", "minimum": 1},
-    "total_token_count": {"type": "integer", "minimum": 0},
+    "compiled_at": {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
+    "token_budget": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
+    "total_token_count": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
     "policy_hash": {"$ref": "#/$defs/digest"},
     "items": {
       "type": "array",
@@ -63,7 +64,7 @@
           ]
         },
         "status": {"enum": ["approved", "contested", "superseded", "retracted"]},
-        "token_count": {"type": "integer", "minimum": 0},
+        "token_count": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
         "source_refs": {
           "type": "array",
           "items": {"$ref": "#/$defs/record_id"},

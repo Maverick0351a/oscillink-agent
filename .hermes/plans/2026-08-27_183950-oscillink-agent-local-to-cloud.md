@@ -182,7 +182,8 @@ oscillink-agent/
 │   ├── event.schema.json
 │   ├── context-manifest.schema.json
 │   ├── capability-grant.schema.json
-│   └── benchmark-manifest.schema.json
+│   ├── benchmark-manifest.schema.json
+│   └── memory-claim.schema.json
 ├── src/oscillink_agent/
 │   ├── __init__.py
 │   ├── api.py
@@ -191,7 +192,8 @@ oscillink-agent/
 │   │   ├── events.py
 │   │   ├── memory.py
 │   │   ├── context.py
-│   │   └── capabilities.py
+│   │   ├── capabilities.py
+│   │   └── benchmarks.py
 │   ├── providers/
 │   │   ├── base.py
 │   │   └── openai_compatible.py
@@ -305,13 +307,14 @@ uv run mypy src
 
 ### Task 3: Freeze machine-readable contracts before runtime code
 
-**Objective:** Define the event, context, capability and benchmark schemas before implementing their behavior.
+**Objective:** Define the event, context, capability, benchmark and memory-claim schemas before implementing their behavior.
 
 **Files:**
 - Create: `schemas/event.schema.json`
 - Create: `schemas/context-manifest.schema.json`
 - Create: `schemas/capability-grant.schema.json`
 - Create: `schemas/benchmark-manifest.schema.json`
+- Create: `schemas/memory-claim.schema.json`
 - Create: `tests/contract/test_schemas.py`
 
 **Required event fields:**
@@ -341,23 +344,40 @@ uv run mypy src
 
 ### Task 4: Implement immutable domain objects
 
-**Objective:** Create typed Pydantic models that correspond exactly to the schemas.
+**Objective:** Create typed Pydantic models whose wire shapes and primitive acceptance
+rules correspond to the schemas, with explicitly documented runtime-only semantic
+invariants that standard Draft 2020-12 cannot express.
+
+JSON Schema is the structural ingress layer. Pydantic validators additionally enforce
+cross-field chronology, canonical-content hashes, causal self-reference, token sums and
+review relationships. The future ledger/store must revalidate those invariants and
+resolve referenced records transactionally; schema acceptance alone never proves them.
+
+`frozen=True` records are immutable through supported application APIs. Public instance
+dictionaries are read-only, nested JSON containers have attribute-free immutable
+storage, and copy/update reconstructs through validation. These Python objects are not
+a security boundary against arbitrary trusted in-process reflection; canonical bytes,
+process isolation and store/broker revalidation provide that boundary.
 
 **Files:**
 - Create: `src/oscillink_agent/domain/events.py`
 - Create: `src/oscillink_agent/domain/context.py`
 - Create: `src/oscillink_agent/domain/capabilities.py`
+- Create: `src/oscillink_agent/domain/benchmarks.py`
 - Create: `src/oscillink_agent/domain/memory.py`
 - Test: `tests/unit/test_domain_models.py`
+- Test: `tests/unit/test_benchmark_models.py`
 
 **TDD steps:**
 
 1. Write tests for round-trip JSON/schema validation.
 2. Add tests for valid time versus record time.
 3. Add tests preventing mutation of frozen records.
-4. Implement the minimum Pydantic models.
-5. Run unit and contract suites.
-6. Commit: `feat: add typed domain contracts`.
+4. Add bilateral primitive and structural schema/model parity tests.
+5. Add runtime-only tests for semantic invariants that JSON Schema cannot express.
+6. Implement the minimum Pydantic models.
+7. Run unit and contract suites.
+8. Commit: `feat: add typed domain contracts`.
 
 ---
 

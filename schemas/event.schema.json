@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://oscillink.com/schemas/agent/event.schema.json",
   "title": "Oscillink Agent Event",
+  "$comment": "Structural validation only. Pydantic and trusted ledger ingress enforce chronology, hash equality, self-causality, and referenced-record existence.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -32,9 +33,38 @@
       "additionalProperties": false,
       "required": ["id", "type"],
       "properties": {
-        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$"},
+        "id": {
+          "type": "string",
+          "pattern": "^(human|model|tool|system)_[a-z0-9][a-z0-9_-]{1,62}$"
+        },
         "type": {"enum": ["human", "model", "tool", "system"]}
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {"pattern": "^human_[a-z0-9][a-z0-9_-]{1,62}$"},
+            "type": {"const": "human"}
+          }
+        },
+        {
+          "properties": {
+            "id": {"pattern": "^model_[a-z0-9][a-z0-9_-]{1,62}$"},
+            "type": {"const": "model"}
+          }
+        },
+        {
+          "properties": {
+            "id": {"pattern": "^tool_[a-z0-9][a-z0-9_-]{1,62}$"},
+            "type": {"const": "tool"}
+          }
+        },
+        {
+          "properties": {
+            "id": {"pattern": "^system_[a-z0-9][a-z0-9_-]{1,62}$"},
+            "type": {"const": "system"}
+          }
+        }
+      ]
     },
     "event_type": {
       "enum": [
@@ -49,8 +79,8 @@
         "outcome"
       ]
     },
-    "observed_at": {"type": "string", "format": "date-time"},
-    "recorded_at": {"type": "string", "format": "date-time"},
+    "observed_at": {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
+    "recorded_at": {"type": "string", "format": "date-time", "pattern": "^(?!0000-)[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "payload_hash": {"$ref": "#/$defs/digest"},
     "artifact_refs": {
       "type": "array",
@@ -113,6 +143,74 @@
           "trust_class": {"const": "model_generated"}
         }
       }
+    },
+    {
+      "if": {
+        "allOf": [
+          {
+            "properties": {"event_type": {"not": {"const": "model_call"}}},
+            "required": ["event_type"]
+          },
+          {
+            "properties": {
+              "actor": {
+                "properties": {"type": {"not": {"const": "model"}}},
+                "required": ["type"]
+              }
+            },
+            "required": ["actor"]
+          }
+        ]
+      },
+      "then": {"properties": {"model": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {"type": {"const": "human"}},
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "properties": {
+          "trust_class": {"enum": ["human_verified", "external_untrusted"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {"type": {"const": "tool"}},
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "properties": {
+          "trust_class": {"enum": ["tool_verified", "external_untrusted"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actor": {
+            "properties": {"type": {"const": "system"}},
+            "required": ["type"]
+          }
+        },
+        "required": ["actor"]
+      },
+      "then": {
+        "properties": {
+          "trust_class": {"enum": ["system", "external_untrusted"]}
+        }
+      }
     }
   ],
   "$defs": {
@@ -155,7 +253,11 @@
     "json_scalar": {
       "anyOf": [
         {"type": "string", "maxLength": 16384},
-        {"type": "number"},
+        {
+          "type": "number",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
         {"type": "boolean"},
         {"type": "null"}
       ]
@@ -165,8 +267,18 @@
       "additionalProperties": false,
       "required": ["provider", "name", "configuration_hash"],
       "properties": {
-        "provider": {"type": "string", "minLength": 1},
-        "name": {"type": "string", "minLength": 1},
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": ".*\\S.*"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": ".*\\S.*"
+        },
         "configuration_hash": {"$ref": "#/$defs/digest"}
       }
     }

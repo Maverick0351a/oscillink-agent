@@ -5,9 +5,18 @@ from __future__ import annotations
 import re
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, Field, field_validator
+from pydantic import Field, field_validator
 
-from oscillink_agent.domain.events import ActorId, EventId, FrozenModel
+from oscillink_agent.domain.events import (
+    ActorId,
+    ContractDatetime,
+    EventId,
+    ExactFalse,
+    ExactOne,
+    FrozenModel,
+    JsonInteger,
+    SchemaVersion,
+)
 
 GrantId = Annotated[str, Field(pattern=r"^grt_[0-9A-HJKMNP-TV-Z]{26}$")]
 Extension = Annotated[str, Field(pattern=r"^\.[A-Za-z0-9]+$")]
@@ -18,7 +27,8 @@ PortableTarget = Annotated[
         pattern=(
             r"^[A-Za-z0-9_-](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?"
             r"(?:/[A-Za-z0-9_-](?:[A-Za-z0-9._-]*[A-Za-z0-9_-])?)*$"
-        )
+        ),
+        max_length=4096,
     ),
 ]
 
@@ -40,9 +50,9 @@ class FileResource(FrozenModel):
 
 
 class CapabilityConstraints(FrozenModel):
-    max_bytes: Annotated[int, Field(ge=1, le=1_048_576)]
+    max_bytes: Annotated[JsonInteger, Field(ge=1, le=1_048_576)]
     allowed_extensions: Annotated[tuple[Extension, ...], Field(min_length=1)]
-    network_allowed: Literal[False]
+    network_allowed: ExactFalse
 
     @field_validator("allowed_extensions")
     @classmethod
@@ -63,13 +73,13 @@ class CapabilityGrant(FrozenModel):
     """
 
     id: GrantId
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     subject_actor_id: ActorId
     capability: Literal["file.read"]
     resource: FileResource
-    issued_at: AwareDatetime
-    valid_for_seconds: Annotated[int, Field(ge=1, le=300)]
+    issued_at: ContractDatetime
+    valid_for_seconds: Annotated[JsonInteger, Field(ge=1, le=300)]
     issued_by: ActorId
     authorization_event_id: EventId
-    max_uses: Literal[1]
+    max_uses: ExactOne
     constraints: CapabilityConstraints

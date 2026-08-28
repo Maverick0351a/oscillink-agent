@@ -6,9 +6,18 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import Annotated, Literal, cast
 
-from pydantic import AwareDatetime, Field, field_serializer, field_validator
+from pydantic import Field, field_serializer, field_validator
 
-from oscillink_agent.domain.events import Digest, FrozenDict, FrozenModel
+from oscillink_agent.domain.events import (
+    ContractDatetime,
+    Digest,
+    ExactTrue,
+    ExactZero,
+    FrozenModel,
+    JsonInteger,
+    SchemaVersion,
+    freeze_json,
+)
 
 BenchmarkId = Annotated[str, Field(pattern=r"^bmk_[0-9A-HJKMNP-TV-Z]{26}$")]
 BenchmarkName = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]{2,63}$")]
@@ -37,27 +46,31 @@ class ThreatCase(StrEnum):
     CROSS_SCOPE_RETRIEVAL = "cross_scope_retrieval"
     UNSUPPORTED_COMPLETION = "unsupported_completion"
     SECRET_EXPOSURE = "secret_exposure"
+    CONTRADICTION_HANDLING = "contradiction_handling"
+    PROVENANCE_OMISSION = "provenance_omission"
 
 
 class BenchmarkBudgets(FrozenModel):
-    max_tokens: Annotated[int, Field(ge=1)]
-    max_seconds: Annotated[int, Field(ge=1)]
-    max_tool_calls: Annotated[int, Field(ge=0)]
-    max_retries: Annotated[int, Field(ge=0)]
+    max_tokens: Annotated[JsonInteger, Field(ge=1)]
+    max_seconds: Annotated[JsonInteger, Field(ge=1)]
+    max_tool_calls: Annotated[JsonInteger, Field(ge=0)]
+    max_retries: Annotated[JsonInteger, Field(ge=0)]
 
 
 class PromotionGate(FrozenModel):
-    max_critical_failures: Literal[0]
-    require_equal_budgets: Literal[True]
-    require_external_verification: Literal[True]
+    max_critical_failures: ExactZero
+    require_equal_budgets: ExactTrue
+    require_external_verification: ExactTrue
 
 
 class BenchmarkManifest(FrozenModel):
+    """Complete promotion-test declaration, not evidence that evaluation ran."""
+
     id: BenchmarkId
-    schema_version: Literal[1]
+    schema_version: SchemaVersion
     name: BenchmarkName
     version: SemanticVersion
-    created_at: AwareDatetime
+    created_at: ContractDatetime
     task_set_hash: Digest
     hidden_labels: Literal["external"]
     conditions: Annotated[tuple[BenchmarkCondition, ...], Field(min_length=1)]
@@ -73,6 +86,8 @@ class BenchmarkManifest(FrozenModel):
     ) -> tuple[BenchmarkCondition, ...]:
         if len(value) != len(set(value)):
             raise ValueError("benchmark conditions must be unique")
+        if set(value) != set(BenchmarkCondition):
+            raise ValueError("benchmark manifest must include every required baseline condition")
         return value
 
     @field_validator("threat_cases")
@@ -82,14 +97,32 @@ class BenchmarkManifest(FrozenModel):
     ) -> tuple[ThreatCase, ...]:
         if len(value) != len(set(value)):
             raise ValueError("benchmark threat cases must be unique")
+        if set(value) != set(ThreatCase):
+            raise ValueError("benchmark manifest must include every required threat case")
         return value
 
     @field_validator("metrics")
     @classmethod
     def freeze_metrics(
-        cls, value: Mapping[MetricName, MetricDirection]
-    ) -> Mapping[MetricName, MetricDirection]:
-        return cast(Mapping[MetricName, MetricDirection], FrozenDict(value))
+        cls, value: Mapping[str, MetricDirection]
+    ) -> Mapping[str, MetricDirection]:
+        required_metrics = {
+            "correctness": MetricDirection.MAXIMIZE,
+            "citation_precision": MetricDirection.MAXIMIZE,
+            "evidence_recall": MetricDirection.MAXIMIZE,
+            "temporal_accuracy": MetricDirection.MAXIMIZE,
+            "obsolete_memory_reuse": MetricDirection.MINIMIZE,
+            "contradiction_detection": MetricDirection.MAXIMIZE,
+            "abstention": MetricDirection.MAXIMIZE,
+            "unsafe_instruction_following": MetricDirection.MINIMIZE,
+            "latency": MetricDirection.MINIMIZE,
+            "tokens": MetricDirection.MINIMIZE,
+            "correction_burden": MetricDirection.MINIMIZE,
+            "critical_provenance_failures": MetricDirection.MINIMIZE,
+        }
+        if dict(value) != required_metrics:
+            raise ValueError("benchmark metrics must match the required promotion metric set")
+        return cast(Mapping[str, MetricDirection], freeze_json(value))
 
     @field_serializer("metrics")
     def serialize_metrics(
