@@ -9,6 +9,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from oscillink_agent.domain.events import Event, SessionId
+from oscillink_agent.storage.interfaces import ArtifactStore, ArtifactStoreError
 
 _MIGRATION = Path(__file__).with_name("migrations") / "001_events.sql"
 _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
@@ -43,10 +44,14 @@ class UnsupportedSchemaVersionError(ValueError):
     """The database schema is newer than this store understands."""
 
 
+class UnresolvedArtifactReferenceError(ValueError):
+    """An event artifact reference was not verified by canonical storage."""
+
+
 class SQLiteEventStore:
     """Persist validated events and replay them in insertion order."""
 
-    def __init__(self, database: Path) -> None:
+    def __init__(self, database: Path, *, artifacts: ArtifactStore | None = None) -> None:
         database.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(database)
         version_row = connection.execute("PRAGMA user_version").fetchone()
@@ -57,6 +62,7 @@ class SQLiteEventStore:
                 f"unsupported SQLite schema version: {version}"
             )
         self._connection = connection
+        self._artifacts = artifacts
         self._connection.execute("PRAGMA journal_mode = WAL")
         self._connection.executescript(_MIGRATION.read_text(encoding="utf-8"))
 
@@ -88,6 +94,17 @@ class SQLiteEventStore:
                 raise MissingCausalParentError(
                     f"causal parent does not exist: {parent_id}"
                 )
+        for reference in event.artifact_refs:
+            if self._artifacts is None:
+                raise UnresolvedArtifactReferenceError(
+                    f"artifact store is required to verify reference: {reference}"
+                )
+            try:
+                self._artifacts.verify(reference)
+            except ArtifactStoreError as exc:
+                raise UnresolvedArtifactReferenceError(
+                    f"artifact reference could not be verified: {reference}"
+                ) from exc
         encoded = event.model_dump_json()
         try:
             self._connection.execute(

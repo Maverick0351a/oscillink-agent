@@ -17,6 +17,7 @@ def make_event(
     *,
     event_id: str = "evt_01J00000000000000000000000",
     text: str = "Oscillink Agent project approved.",
+    artifact_refs: tuple[str, ...] = (),
     causal_parent_ids: tuple[str, ...] = (),
 ) -> Event:
     payload = {"text": text}
@@ -33,7 +34,7 @@ def make_event(
                 "observed_at": "2026-08-27T18:45:00Z",
                 "recorded_at": "2026-08-27T18:45:01Z",
                 "payload_hash": canonical_payload_hash(payload),
-                "artifact_refs": (),
+                "artifact_refs": artifact_refs,
                 "causal_parent_ids": causal_parent_ids,
                 "trust_class": "human_verified",
                 "sensitivity": "private",
@@ -385,3 +386,55 @@ store.append_many(interrupted_entries())
     reopened = SQLiteEventStore(database)
     assert list(reopened.stream(event.session_id)) == []
     reopened.close()
+
+
+def test_event_store_rejects_unresolved_artifact_reference(tmp_path: Path) -> None:
+    from oscillink_agent.storage.sqlite import (
+        SQLiteEventStore,
+        UnresolvedArtifactReferenceError,
+    )
+
+    reference = "sha256:" + "0" * 64
+    event = make_event(artifact_refs=(reference,))
+    store = SQLiteEventStore(tmp_path / "events.sqlite3")
+
+    with pytest.raises(UnresolvedArtifactReferenceError, match=reference):
+        store.append(event, idempotency_key="idem_missing-artifact")
+
+    assert list(store.stream(event.session_id)) == []
+    store.close()
+
+
+def test_event_store_rejects_reference_missing_from_configured_store(
+    tmp_path: Path,
+) -> None:
+    from oscillink_agent.storage.artifacts import LocalArtifactStore
+    from oscillink_agent.storage.sqlite import (
+        SQLiteEventStore,
+        UnresolvedArtifactReferenceError,
+    )
+
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    reference = "sha256:" + "0" * 64
+    event = make_event(artifact_refs=(reference,))
+    store = SQLiteEventStore(tmp_path / "events.sqlite3", artifacts=artifacts)
+
+    with pytest.raises(UnresolvedArtifactReferenceError, match=reference):
+        store.append(event, idempotency_key="idem_missing-artifact")
+
+    assert list(store.stream(event.session_id)) == []
+    store.close()
+
+
+def test_event_store_appends_event_with_verified_artifact(tmp_path: Path) -> None:
+    from oscillink_agent.storage.artifacts import LocalArtifactStore
+    from oscillink_agent.storage.sqlite import SQLiteEventStore
+
+    artifacts = LocalArtifactStore(tmp_path / "artifacts")
+    reference = artifacts.put(b"verified source artifact")
+    event = make_event(artifact_refs=(reference,))
+    store = SQLiteEventStore(tmp_path / "events.sqlite3", artifacts=artifacts)
+
+    assert store.append(event, idempotency_key="idem_verified-artifact") == event.id
+    assert [replayed.id for replayed in store.stream(event.session_id)] == [event.id]
+    store.close()
