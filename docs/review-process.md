@@ -19,6 +19,15 @@ Reviewer subagents and temporary Git worktrees are not part of this process.
 
 ## Candidate gate
 
+Expose every new file to the reviewed Git diff without staging its contents:
+
+```bash
+git add --intent-to-add -- <new-file> [<new-file> ...]
+```
+
+The verifier fails closed when untracked files remain because ordinary `git diff HEAD`
+omits them from line-ending checks, security scans, and the reviewed diff hash.
+
 From the repository root on Windows:
 
 ```bash
@@ -37,6 +46,7 @@ This reviews committed `HEAD` against the current candidate worktree. It runs:
 - the complete pytest suite;
 - Ruff;
 - strict mypy;
+- rejection of untracked files omitted from the candidate diff;
 - `git diff --check`;
 - JSON parsing for every contract schema;
 - build-plan mirror equality;

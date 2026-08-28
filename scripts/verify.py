@@ -60,6 +60,24 @@ def git_output(*arguments: str) -> str:
     return run(["git", *arguments], capture=True)
 
 
+def require_no_untracked_files() -> None:
+    output = subprocess.run(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout
+    untracked = [os.fsdecode(raw) for raw in output.split(b"\0") if raw]
+    if untracked:
+        preview = ", ".join(untracked[:10])
+        if len(untracked) > 10:
+            preview += f", ... ({len(untracked)} total)"
+        fail(
+            "candidate review cannot include untracked files; expose them to Git diff "
+            f"with `git add --intent-to-add -- <paths>`: {preview}"
+        )
+
+
 def changed_files(base: str) -> list[Path]:
     output = subprocess.run(
         ["git", "diff", "--name-only", "-z", base, "--"],
@@ -74,6 +92,7 @@ def check_repository_invariants(base: str, *, require_clean: bool) -> str:
     run(["git", "rev-parse", "--verify", base], capture=True)
     if require_clean and git_output("status", "--porcelain"):
         fail("stable-range review requires a clean worktree")
+    require_no_untracked_files()
 
     run(["git", "diff", "--check", base, "--"])
 
