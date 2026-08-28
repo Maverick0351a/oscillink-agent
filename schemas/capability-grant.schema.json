@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oscillink.com/schemas/agent/capability-grant.schema.json",
+  "title": "Oscillink Agent Capability Grant",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "schema_version",
+    "subject_actor_id",
+    "capability",
+    "resource",
+    "issued_at",
+    "expires_at",
+    "issued_by",
+    "authorization_event_id",
+    "max_uses",
+    "constraints"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^grt_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "schema_version": {"const": 1},
+    "subject_actor_id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$"},
+    "capability": {"const": "file.read"},
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "target"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "target": {"type": "string", "minLength": 1}
+      }
+    },
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "issued_by": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$"},
+    "authorization_event_id": {
+      "type": "string",
+      "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "max_uses": {"const": 1},
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_bytes", "allowed_extensions", "network_allowed"],
+      "properties": {
+        "max_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "allowed_extensions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^\\.[A-Za-z0-9]+$"}
+        },
+        "network_allowed": {"const": false}
+      }
+    }
+  }
+}

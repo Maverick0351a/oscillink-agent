@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oscillink.com/schemas/agent/context-manifest.schema.json",
+  "title": "Oscillink Agent Context Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "schema_version",
+    "task_id",
+    "compiled_at",
+    "token_budget",
+    "total_token_count",
+    "policy_hash",
+    "items"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^ctx_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "schema_version": {"const": 1},
+    "task_id": {"type": "string", "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "compiled_at": {"type": "string", "format": "date-time"},
+    "token_budget": {"type": "integer", "minimum": 1},
+    "total_token_count": {"type": "integer", "minimum": 0},
+    "policy_hash": {"$ref": "#/$defs/digest"},
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/item"},
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^(evt|clm|doc|prc)_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "content_hash",
+        "inclusion_reason",
+        "trust_class",
+        "status",
+        "token_count",
+        "source_refs"
+      ],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/record_id"},
+        "content_hash": {"$ref": "#/$defs/digest"},
+        "inclusion_reason": {"type": "string", "minLength": 1},
+        "trust_class": {
+          "enum": [
+            "human_verified",
+            "tool_verified",
+            "model_generated",
+            "external_untrusted",
+            "system"
+          ]
+        },
+        "status": {"enum": ["approved", "contested", "superseded", "retracted"]},
+        "token_count": {"type": "integer", "minimum": 0},
+        "source_refs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/record_id"},
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

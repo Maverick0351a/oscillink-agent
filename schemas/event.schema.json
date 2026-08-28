@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oscillink.com/schemas/agent/event.schema.json",
+  "title": "Oscillink Agent Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "schema_version",
+    "session_id",
+    "run_id",
+    "task_id",
+    "actor",
+    "event_type",
+    "observed_at",
+    "recorded_at",
+    "payload_hash",
+    "artifact_refs",
+    "causal_parent_ids",
+    "trust_class",
+    "sensitivity",
+    "payload"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "schema_version": {"const": 1},
+    "session_id": {"type": "string", "pattern": "^ses_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "run_id": {"type": "string", "pattern": "^run_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "task_id": {"type": "string", "pattern": "^tsk_[0-9A-HJKMNP-TV-Z]{26}$"},
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$"},
+        "type": {"enum": ["human", "model", "tool", "system"]}
+      }
+    },
+    "event_type": {
+      "enum": [
+        "message",
+        "model_call",
+        "tool_call",
+        "observation",
+        "memory_proposal",
+        "approval",
+        "correction",
+        "retraction",
+        "outcome"
+      ]
+    },
+    "observed_at": {"type": "string", "format": "date-time"},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "payload_hash": {"$ref": "#/$defs/digest"},
+    "artifact_refs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/digest"},
+      "uniqueItems": true
+    },
+    "causal_parent_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^evt_[0-9A-HJKMNP-TV-Z]{26}$"},
+      "uniqueItems": true
+    },
+    "trust_class": {
+      "enum": [
+        "human_verified",
+        "tool_verified",
+        "model_generated",
+        "external_untrusted",
+        "system"
+      ]
+    },
+    "sensitivity": {"enum": ["public", "internal", "private", "restricted"]},
+    "payload": {"type": "object"},
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "name", "configuration_hash"],
+      "properties": {
+        "provider": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "configuration_hash": {"$ref": "#/$defs/digest"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"event_type": {"const": "model_call"}},
+        "required": ["event_type"]
+      },
+      "then": {"required": ["model"]}
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
