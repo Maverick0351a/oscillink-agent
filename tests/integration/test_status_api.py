@@ -48,7 +48,7 @@ def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path
         },
         "features": {
             "chat": "planned",
-            "memory_lattice": "planned",
+            "memory_lattice": "preview",
             "appearance": "preview",
         },
     }

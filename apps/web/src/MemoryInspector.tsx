@@ -49,7 +49,7 @@ export default function MemoryInspector({
         <span className="section-index">NODE INSPECTOR</span>
         <div className="inspector-empty"><Sparkles size={24} aria-hidden="true" /></div>
         <h3>No memory selected</h3>
-        <p>Select a reviewed record to inspect its exact source, digest, labels, and links.</p>
+        <p>Select a memory record to inspect its authority, source, digest, labels, and links.</p>
       </aside>
     )
   }
@@ -71,25 +71,27 @@ export default function MemoryInspector({
           {category?.symbol ?? '?'}
         </span>
         <div>
-          <p className="inspector-kicker">REVIEWED RECORD</p>
+          <p className="inspector-kicker">{node.authority_state.toUpperCase()} RECORD</p>
           <h3>{node.title}</h3>
         </div>
       </div>
 
       <div className="inspector-badges" aria-label="Record classification">
+        <span>{node.source_kind === 'native' ? 'NATIVE MEMORY' : 'OBSIDIAN SOURCE'}</span>
         <span>{category?.label ?? node.category}</span>
         {domainLabels.map((domain) => <span key={domain}>{domain}</span>)}
       </div>
 
       <dl>
-        <div><dt>STATUS</dt><dd>{node.source_status?.toUpperCase() ?? 'UNSPECIFIED'}</dd></div>
+        <div><dt>AUTHORITY</dt><dd>{node.authority_state.toUpperCase()}</dd></div>
+        <div><dt>SOURCE STATUS</dt><dd>{node.source_status?.toUpperCase() ?? 'NOT APPLICABLE'}</dd></div>
         <div><dt>TYPE</dt><dd>{node.frontmatter_type}</dd></div>
         <div><dt>LINKS</dt><dd>{node.wikilink_count}</dd></div>
       </dl>
 
       <section className="inspector-section">
         <h4><FileText size={13} aria-hidden="true" /> Source</h4>
-        <p>{node.source_path}</p>
+        <p>{node.source_path ?? 'Oscillink native memory'}</p>
         <code>{node.content_hash}</code>
       </section>
 

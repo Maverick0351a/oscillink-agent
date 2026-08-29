@@ -9,10 +9,12 @@ const categories: CategoryLegendEntry[] = [
 ]
 const domains: DomainLegendEntry[] = [{ domain: 'ai_ml', label: 'AI / ML' }]
 const node: MemoryNodeDetail = {
-  id: 'doc_A37PTXSESJE0P4NFJTD7E7RRAH',
+  id: 'mem_A37PTXSESJE0P4NFJTD7E7RRAH',
   title: 'Oscillink Agent',
   source_path: '20 Projects/Oscillink Agent.md',
   source_status: 'active',
+  authority_state: 'approved',
+  source_kind: 'obsidian',
   category: 'project',
   domains: ['ai_ml'],
   topics: ['long-term memory'],
@@ -39,6 +41,8 @@ describe('MemoryInspector', () => {
 
     expect(screen.getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
     expect(screen.getByText('Projects')).toBeInTheDocument()
+    expect(screen.getByText('APPROVED RECORD')).toBeInTheDocument()
+    expect(screen.getByText('OBSIDIAN SOURCE')).toBeInTheDocument()
     expect(screen.getByText('AI / ML')).toBeInTheDocument()
     expect(screen.getByText('20 Projects/Oscillink Agent.md')).toBeInTheDocument()
     expect(screen.getByText(node.content_hash)).toBeInTheDocument()
@@ -58,7 +62,7 @@ describe('MemoryInspector', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'No memory selected' })).toBeInTheDocument()
-    expect(screen.getByText(/Select a reviewed record/)).toBeInTheDocument()
+    expect(screen.getByText(/Select a memory record/)).toBeInTheDocument()
     expect(screen.queryByText('Oscillink Agent')).not.toBeInTheDocument()
   })
 })

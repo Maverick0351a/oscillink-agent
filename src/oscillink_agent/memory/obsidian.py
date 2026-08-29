@@ -88,6 +88,7 @@ class IndexedObsidianNote(FrozenModel):
     id: DocumentId
     source_path: str
     title: str
+    content: str
     frontmatter_type: str
     source_status: str | None
     category: MemoryCategory
@@ -453,6 +454,7 @@ def _build_note(path: Path, root: Path) -> IndexedObsidianNote | None:
         id=_stable_document_id(source_path),
         source_path=source_path,
         title=title,
+        content=text,
         frontmatter_type=frontmatter_type,
         source_status=source_status,
         category=category,

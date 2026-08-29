@@ -42,7 +42,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
         setSelectedId(nextProjection.collection.nodes[0]?.id ?? null)
       })
       .catch((error: unknown) => {
-        if (!isAbort(error)) setProjectionError('The reviewed-memory API could not be reached.')
+        if (!isAbort(error)) setProjectionError('The product-memory API could not be reached.')
       })
     return () => controller.abort()
   }, [])
@@ -76,7 +76,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
   const badge = projectionError !== null
     ? 'MEMORY OFFLINE'
     : state === 'ready'
-      ? `READY · ${nodeCount} REVIEWED`
+      ? `READY · ${nodeCount} MEMORY RECORDS`
       : state === 'degraded'
         ? `DEGRADED · ${issueCount} ISSUES`
         : state === 'unavailable'
@@ -95,7 +95,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
       if (normalizedQuery === '') return true
       const searchable = [
         node.title,
-        node.source_path,
+        node.source_path ?? '',
         categoryLabels.get(node.category) ?? node.category,
         ...node.domains.map((domain) => domainLabels.get(domain) ?? domain),
         ...node.topics,
@@ -116,7 +116,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
   const unavailableMessage = state !== 'unavailable'
     ? null
     : unavailableReason === 'vault_not_configured'
-      ? 'The reviewed-memory source is not configured on this local node.'
+      ? 'No product-owned memory repository is initialized. Create memory or synchronize a source.'
       : unavailableReason === 'vault_not_found'
         ? 'The configured reviewed-memory source is unavailable.'
         : 'The reviewed-memory index could not be built safely.'
@@ -127,7 +127,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
         <div>
           <span className="section-index">02 / MEMORY</span>
           <h2>Memory Lattice</h2>
-          <p>Typed provenance graph projected from reviewed human-owned records.</p>
+          <p>Product-owned memory with typed provenance and explicit human authority.</p>
         </div>
         <span className={`pending-badge memory-state ${state ?? 'loading'}`}>{badge}</span>
       </div>
@@ -142,7 +142,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
           aria-pressed={activeProjection === 'memory'}
           onClick={() => setActiveProjection('memory')}
         >
-          Reviewed Memory
+          Product Memory
         </button>
         <button
           type="button"
@@ -167,11 +167,11 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
         <>
       <div className="memory-controls" aria-label="Memory navigation controls">
         <label className="memory-search">
-          <span className="sr-only">Search reviewed memory</span>
+          <span className="sr-only">Search product memory</span>
           <Search size={14} aria-hidden="true" />
           <input
             type="search"
-            aria-label="Search reviewed memory"
+            aria-label="Search product memory"
             placeholder="Search title, source, topic…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -232,8 +232,8 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
       <div className="memory-layout">
         <div className="lattice-panel">
           <div className="graph-toolbar">
-            <span><Network size={14} aria-hidden="true" /> REVIEWED MEMORY</span>
-            <span>{`Exact links only · ${visibleNodes.length} of ${nodes.length} reviewed records`}</span>
+            <span><Network size={14} aria-hidden="true" /> PRODUCT MEMORY</span>
+            <span>{`Exact links only · ${visibleNodes.length} of ${nodes.length} memory records`}</span>
           </div>
           <div className="memory-graph-stage">
             <MemoryGraph
@@ -247,7 +247,7 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
             />
             {projection !== null && state !== 'unavailable' && visibleNodes.length === 0 ? (
               <div className="memory-graph-empty" role="status">
-                No reviewed records match the current filters.
+                No memory records match the current filters.
               </div>
             ) : null}
           </div>

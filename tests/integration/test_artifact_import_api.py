@@ -10,7 +10,12 @@ import pytest
 from fastapi import FastAPI
 
 from oscillink_agent.api import create_app
-from oscillink_agent.memory.obsidian import build_reviewed_obsidian_index
+from oscillink_agent.memory.obsidian import (
+    MemoryCategory,
+    MemoryDomain,
+    build_reviewed_obsidian_index,
+)
+from oscillink_agent.memory.repository import SQLiteMemoryRepository
 
 
 def post_import(
@@ -150,6 +155,48 @@ domains: [science]
         "status": "pending_review",
         "target_record_id": record_id,
     }
+
+
+def test_import_api_can_target_product_owned_memory_record(tmp_path: Path) -> None:
+    source_root = tmp_path / "selected"
+    source_root.mkdir()
+    (source_root / "evidence.md").write_text("# Native evidence\n", encoding="utf-8")
+    data_root = tmp_path / "runtime"
+    repository = SQLiteMemoryRepository(data_root / "memory.sqlite3")
+    try:
+        record = repository.create_native(
+            title="Native memory",
+            content="Product-owned canonical memory.",
+            category=MemoryCategory.PROJECT,
+            domains=(MemoryDomain.SOFTWARE,),
+            topics=("native",),
+            content_hash=(
+                "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ),
+        )
+    finally:
+        repository.close()
+    app = create_app(
+        data_root=data_root,
+        vault_root=None,
+        import_scopes={"user_selection": source_root},
+    )
+
+    response = post_import(
+        app,
+        {
+            "schema_version": 1,
+            "request_id": "evt_01J00000000000000000000114",
+            "observed_at": "2026-08-28T19:44:00Z",
+            "scope_id": "user_selection",
+            "target": "evidence.md",
+            "target_record_id": record.id,
+        },
+        idempotency_key="import-product-record-001",
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["association"]["target_record_id"] == record.id
 
 
 def test_import_api_is_unavailable_without_configured_scope(tmp_path: Path) -> None:

@@ -1,24 +1,31 @@
-# Reviewed Memory Index and Taxonomy Contract
+# Product-Owned Memory and Source Taxonomy Contract
 
 ## Purpose
 
-The reviewed Obsidian index is a deterministic, read-only projection of curated Markdown records. It is the source boundary for the later typed memory API, lattice projection, lexical retrieval, embeddings, K-nearest-neighbor neighborhoods and derived clusters.
+Oscillink owns stable memory identity, immutable record revisions and human review decisions. Native customer memory works without Obsidian. External Markdown remains portable source material that can be synchronized into the product repository with provenance.
 
-The index does not make a note true, approved or authoritative merely because the note exists. It preserves source provenance and reports how every organizational label was assigned.
+Source presence does not make a record true, approved or authoritative. The repository separates source origin, authority state and derived retrieval projections.
 
 ## Canonical and derived state
 
-Canonical human-owned state remains Markdown in the reviewed Obsidian vault. The following are rebuildable derived state:
+Canonical product state is the product-owned memory repository:
+
+- stable `mem_` record identities;
+- immutable serialized record revisions;
+- append-only review decisions;
+- source bindings and synchronization outcomes.
+
+Human-owned Markdown remains canonical for the customer's source document when Obsidian is used. Synchronization creates or revises an Oscillink record without transferring product identity back to a filename. The following remain rebuildable derived state:
 
 - index snapshots;
 - source content digests;
-- path-derived document IDs;
+- adapter-local `doc_` IDs used by the legacy read-only source projection;
 - automatic category and domain labels;
 - FTS indexes;
 - embeddings and nearest-neighbor edges;
 - cluster memberships, labels and layout coordinates.
 
-Explicit `category` and `domains` frontmatter are human-reviewed metadata. Automatically inferred labels are projections and must not be written back to the vault without review.
+Explicit `category` and `domains` frontmatter are source metadata. Automatically inferred labels are projections and must not be written back to a source without review.
 
 ## Inclusion rules
 
@@ -34,19 +41,22 @@ The initial index includes UTF-8 Markdown records with supported typed frontmatt
 
 Malformed UTF-8, malformed frontmatter and unsupported typed labels produce explicit index issues rather than silent omission or partial ingestion.
 
-## Stable identity and provenance
+## Stable identity, revisions and provenance
 
-Each indexed node carries:
+Each product record carries:
 
-- a stable opaque `doc_` ID derived from its normalized vault-relative path;
-- its vault-relative POSIX source path, never an absolute host path;
-- SHA-256 of the exact source bytes;
-- frontmatter type and source status;
-- title, topics and Obsidian wikilinks;
+- a stored opaque `mem_` identity independent of providers and source paths;
+- source kind (`native` or `obsidian`) and a bounded source key;
+- a relative source locator when applicable, never an absolute host path;
+- SHA-256 source/content digest;
+- content, title, topics and exact wikilinks;
 - category and domain labels;
-- classification basis.
+- classification basis and source status;
+- an authority state independent of source presence.
 
-Editing content preserves the node ID and changes both its source digest and the complete index digest. A rename currently changes the path-derived ID. A future explicit frontmatter ID can provide rename-stable identity after its promotion and collision rules are specified.
+Native creation starts in `candidate`. Obsidian synchronization starts in `curated`. Human review can approve or reject either state. Every decision is bound to the reviewed content digest, so a later synchronized content revision returns to `curated` instead of inheriting approval. Rejected records are terminal for that revision. An approved record can be superseded only by another approved product record; the replacement identity is retained on the append-only decision. The latest valid decision for the current revision controls the projected authority state without rewriting prior review history.
+
+Editing a synchronized source appends a record revision and preserves its product identity when the source locator is unchanged. A pure rename with unchanged bytes preserves identity when the repository can unambiguously match one prior locator absent from the current source snapshot. Ambiguous rename detection fails conservatively by creating a new record rather than silently merging records. Explicit connector-owned source IDs remain a future improvement.
 
 ## Primary categories
 
@@ -105,23 +115,29 @@ topics:
 
 ## Lattice semantics
 
-The current neural renderer remains a foundation architecture map until the typed memory projection API is connected. When real nodes arrive:
+The Memory Lattice renders product-owned records. The system architecture map remains a separate disclosed view:
 
 - primary category controls the legend treatment;
 - domains appear as textual badges and filters;
 - individual records remain inspectable beneath any cluster;
 - exact wikilinks and governed relationships remain distinct from inferred similarity;
 - KNN edges and cluster membership remain versioned derived projections;
+- authority state and source kind remain visible in the focused inspector;
 - cluster size, depth, brightness and position must not imply truth, confidence or authority without an explicit legend.
 
-## Typed projection API
+User-adjustable focus weights are not implemented in this slice. When added, they must remain a separate bounded retrieval preference: authorization and authority eligibility run first, and focus cannot approve, validate or expose a record.
 
-The read-only projection boundary exposes:
+## Typed API
+
+The current boundary exposes:
 
 - `GET /api/v1/memory/index` for state, digest, category and domain legends, counts and sanitized issues;
 - `GET /api/v1/memory/nodes` for category/domain-filtered summaries;
 - `GET /api/v1/memory/nodes/{node_id}` for focused inspector metadata.
+- `POST /api/v1/memory/nodes` for product-native candidate creation;
+- `POST /api/v1/memory/nodes/{node_id}/reviews` for idempotent human approval, rejection or governed supersession;
+- `POST /api/v1/memory/sources/obsidian/sync` for explicit idempotent synchronization of the configured source.
 
-Responses use typed `ready`, `degraded` and `unavailable` states. Invalid category/domain labels and malformed document IDs are rejected before vault lookup. The browser receives only vault-relative paths and cannot access the filesystem directly.
+Responses use typed `ready`, `degraded` and `unavailable` states. Invalid category/domain labels and malformed `doc_`/`mem_` IDs are rejected before lookup. The browser receives only relative source locators and cannot access the filesystem directly. Artifact candidate associations can target either legacy `doc_` source projections or product-owned `mem_` records during migration.
 
-The next milestone is to replace the foundation-only lattice data with real projected nodes and a focused inspector while retaining the truthful architecture-map disclosure as a separate system view.
+The next milestone is to expose review actions and source synchronization controls in the customer UI, then connect approved-memory retrieval and deterministic context manifests.

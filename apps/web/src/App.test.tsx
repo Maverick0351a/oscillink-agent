@@ -19,10 +19,12 @@ const statusResponse = {
 }
 
 const memoryNode = {
-  id: 'doc_A37PTXSESJE0P4NFJTD7E7RRAH',
+  id: 'mem_A37PTXSESJE0P4NFJTD7E7RRAH',
   title: 'Oscillink Agent',
   source_path: '20 Projects/Oscillink Agent.md',
   source_status: 'active',
+  authority_state: 'approved',
+  source_kind: 'obsidian',
   category: 'project',
   domains: ['ai_ml'],
   topics: [],
@@ -112,8 +114,8 @@ describe('Oscillink Agent shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Memory Lattice' }))
 
     expect(screen.getByRole('heading', { name: 'Memory Lattice' })).toBeInTheDocument()
-    expect(await screen.findByText('READY · 1 REVIEWED')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Reviewed memory lattice' })).toBeInTheDocument()
+    expect(await screen.findByText('READY · 1 MEMORY RECORDS')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
     expect(
       await screen.findByRole('heading', { name: 'Oscillink Agent', level: 3 }),
     ).toBeInTheDocument()

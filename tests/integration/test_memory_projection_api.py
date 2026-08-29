@@ -109,6 +109,8 @@ def test_node_collection_filters_by_category_and_domain(tmp_path: Path) -> None:
             "title": "Field Trial",
             "source_path": "30 Notes/Research/Field Trial.md",
             "source_status": "active",
+            "authority_state": "curated",
+            "source_kind": "obsidian",
             "category": "experiment",
             "domains": ["rf_em", "science", "mathematics"],
             "topics": ["field inference", "calibration"],

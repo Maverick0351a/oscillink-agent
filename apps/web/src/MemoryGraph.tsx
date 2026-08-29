@@ -159,7 +159,9 @@ function buildVisualGraph(
   })
   const source = nodes.find((node) => node.id === selectedId)
   const targetByPath = new Map(
-    nodes.map((node) => [normalizeWikiTarget(node.source_path), node] as const),
+    nodes
+      .filter((node) => node.source_path !== null)
+      .map((node) => [normalizeWikiTarget(node.source_path ?? ''), node] as const),
   )
   const exactTargets = source === undefined
     ? []
@@ -606,7 +608,7 @@ export default function MemoryGraph({
   }, [graph, selectedId])
 
   const isMemory = mode === 'memory'
-  const instructionId = isMemory ? 'reviewed-memory-graph-instructions' : 'neural-graph-instructions'
+  const instructionId = isMemory ? 'product-memory-graph-instructions' : 'neural-graph-instructions'
 
   return (
     <div className="memory-graph-frame">
@@ -617,25 +619,25 @@ export default function MemoryGraph({
       </div>
       <div className="graph-classification">
         {isMemory
-          ? `REVIEWED MEMORY · ${nodes.length} ${nodes.length === 1 ? 'RECORD' : 'RECORDS'}`
+          ? `PRODUCT MEMORY · ${nodes.length} ${nodes.length === 1 ? 'RECORD' : 'RECORDS'}`
           : 'FOUNDATION MAP · NOT MEMORY DATA'}
       </div>
       <canvas
         ref={canvasRef}
         className="memory-graph-canvas"
         role="img"
-        aria-label={isMemory ? 'Reviewed memory lattice' : 'Foundation memory architecture map'}
+        aria-label={isMemory ? 'Product memory lattice' : 'Foundation memory architecture map'}
         aria-describedby={instructionId}
         data-renderer="projected-3d-neural"
         tabIndex={0}
       />
       <p id={instructionId} className="sr-only">
         {isMemory
-          ? `${nodes.length} reviewed memory records in a projected three-dimensional field. Only exact wikilinks from the focused record are drawn. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.`
+          ? `${nodes.length} product memory records in a projected three-dimensional field. Only exact wikilinks from the focused record are drawn. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.`
           : 'Seven architecture nodes connected by curved synapses in a projected three-dimensional field. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.'}
       </p>
       {isMemory ? (
-        <ul className="memory-node-roster" aria-label="Reviewed memory records">
+        <ul className="memory-node-roster" aria-label="Product memory records">
           {nodes.map((node) => {
             const category = categoryById.get(node.category)
             return (

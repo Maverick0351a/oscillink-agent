@@ -23,10 +23,12 @@ const indexResponse = {
 
 const nodes = [
   {
-    id: 'doc_A37PTXSESJE0P4NFJTD7E7RRAH',
+    id: 'mem_A37PTXSESJE0P4NFJTD7E7RRAH',
     title: 'Oscillink Agent',
     source_path: '20 Projects/Oscillink Agent.md',
     source_status: 'active',
+    authority_state: 'approved',
+    source_kind: 'obsidian',
     category: 'project',
     domains: ['ai_ml'],
     topics: [],
@@ -34,10 +36,12 @@ const nodes = [
     wikilink_count: 1,
   },
   {
-    id: 'doc_PHBCG4C4DKQWX1903XXPVD7ZB6',
+    id: 'mem_PHBCG4C4DKQWX1903XXPVD7ZB6',
     title: 'Agent Architecture Research',
-    source_path: '30 Notes/Research/Agent Research.md',
-    source_status: 'active',
+    source_path: null,
+    source_status: null,
+    authority_state: 'candidate',
+    source_kind: 'native',
     category: 'research',
     domains: ['ai_ml', 'engineering'],
     topics: ['agent architecture'],
@@ -131,17 +135,19 @@ describe('MemoryWorkspace', () => {
 
     render(<MemoryWorkspace latticeState="ready" />)
 
-    expect(await screen.findByText('READY · 2 REVIEWED')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Reviewed memory lattice' })).toBeInTheDocument()
+    expect(await screen.findByText('READY · 2 MEMORY RECORDS')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
     const legend = screen.getByRole('list', { name: 'Memory category legend' })
     expect(within(legend).getByText('Projects')).toBeInTheDocument()
     expect(within(legend).getByText('Research')).toBeInTheDocument()
     expect(within(legend).getByText('P')).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+    expect(screen.getByText('APPROVED RECORD')).toBeInTheDocument()
+    expect(screen.getByText('OBSIDIAN SOURCE')).toBeInTheDocument()
     expect(screen.getByText('20 Projects/Oscillink Agent.md')).toBeInTheDocument()
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/v1/memory/nodes/doc_A37PTXSESJE0P4NFJTD7E7RRAH',
+        '/api/v1/memory/nodes/mem_A37PTXSESJE0P4NFJTD7E7RRAH',
         expect.any(Object),
       )
     })
@@ -150,7 +156,7 @@ describe('MemoryWorkspace', () => {
   it('combines search, category, and domain filters without retaining hidden focus', async () => {
     stubReadyMemory()
     render(<MemoryWorkspace latticeState="ready" />)
-    await screen.findByText('READY · 2 REVIEWED')
+    await screen.findByText('READY · 2 MEMORY RECORDS')
     await screen.findByRole('heading', { name: 'Oscillink Agent' })
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
@@ -160,14 +166,14 @@ describe('MemoryWorkspace', () => {
       target: { value: 'engineering' },
     })
 
-    expect(screen.getByText(/1 of 2 reviewed records/)).toBeInTheDocument()
+    expect(screen.getByText(/1 of 2 memory records/)).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Agent Architecture Research' })).toBeInTheDocument()
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search reviewed memory' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search product memory' }), {
       target: { value: 'Oscillink' },
     })
 
-    expect(screen.getByText('No reviewed records match the current filters.')).toBeInTheDocument()
+    expect(screen.getByText('No memory records match the current filters.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No memory selected' })).toBeInTheDocument()
   })
 
@@ -176,8 +182,8 @@ describe('MemoryWorkspace', () => {
     render(<MemoryWorkspace latticeState="preview" />)
 
     expect(await screen.findByText('MEMORY UNAVAILABLE')).toBeInTheDocument()
-    expect(screen.getByText(/reviewed-memory source is not configured/i)).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Reviewed memory lattice' })).toBeInTheDocument()
+    expect(screen.getByText(/no product-owned memory repository is initialized/i)).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'System Architecture' }))
 

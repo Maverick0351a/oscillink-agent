@@ -7,13 +7,15 @@ Oscillink Agent is a customer-facing, model-neutral agentic memory workspace. It
 The first milestone is a governed continuity kernel:
 
 - append-only execution events;
-- reviewed Obsidian knowledge;
+- product-owned memory identities, revisions and human review decisions;
 - provenance-linked retrieval;
 - context manifests for model calls;
 - typed capability grants;
 - parent-versus-candidate evaluation.
 
-The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, a deterministic read-only Obsidian metadata index, typed memory/import APIs, and a launchable cyberpunk web workspace. `POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact stable `doc_` record target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical reviewed Markdown or implies acceptance. The next customer vertical slice will make curated, candidate and approved memory states truthful in the UI, add explicit browser import/review flow, and connect provider-neutral chat, citations and run inspection. Removable-volume discovery is deferred until that workflow works. The shell reports live backend/storage status, renders real source records with search, category/domain filters and an exact-provenance inspector, keeps the architecture scaffold as a separate non-memory view, and keeps chat disabled until the governed runtime exists.
+The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and explicit idempotent Obsidian synchronization that preserves product identity across unambiguous source renames. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance. Obsidian remains an optional connector rather than the canonical product database or review authority.
+
+`POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The next customer slice exposes create, synchronization and review controls in the browser, then connects approved-memory retrieval, provider-neutral chat, citations and run inspection. Removable-volume discovery remains deferred.
 
 ## Provider strategy
 
@@ -27,17 +29,19 @@ Open weights can remove per-token provider fees locally; hosted inference, cloud
 ## Architecture
 
 ```text
-Obsidian/Git + append-only events
-              ↓
-       cited context compiler
-              ↓
- local/cloud model provider
-              ↓
-      typed capability broker
-              ↓
-   isolated tools + verification
-              ↓
- evaluation, promotion, rollback
+Native memory + optional connectors
+                 ↓
+ product-owned IDs/revisions/reviews
+                 ↓
+      cited context compiler
+                 ↓
+    local/cloud model provider
+                 ↓
+       typed capability broker
+                 ↓
+    isolated tools + verification
+                 ↓
+  evaluation, promotion, rollback
 ```
 
 ## Development
@@ -60,7 +64,7 @@ export OSCILLINK_AGENT_VAULT_DIR="$HOME/Documents/Maverick HQ"
 PYTHONPATH= .venv/Scripts/python.exe -m uvicorn oscillink_agent.api:app --host 127.0.0.1 --port 8765
 ```
 
-If `OSCILLINK_AGENT_VAULT_DIR` is omitted, the memory endpoints return a typed `unavailable` state and never guess or create a vault path.
+If `OSCILLINK_AGENT_VAULT_DIR` is omitted, native memory still works. Empty read endpoints return a typed `unavailable` state until a native record exists; the application never guesses or creates a vault path.
 
 Start the frontend in a second terminal:
 

@@ -1,4 +1,13 @@
 export type MemoryProjectionState = 'ready' | 'degraded' | 'unavailable'
+export type MemoryAuthorityState =
+  | 'curated'
+  | 'candidate'
+  | 'approved'
+  | 'rejected'
+  | 'superseded'
+  | 'contradicted'
+  | 'retracted'
+export type MemorySourceKind = 'native' | 'obsidian'
 export type MemoryUnavailableReason =
   | 'vault_not_configured'
   | 'vault_not_found'
@@ -56,8 +65,10 @@ export interface MemoryIndexProjection {
 export interface MemoryNodeSummary {
   id: string
   title: string
-  source_path: string
+  source_path: string | null
   source_status: string | null
+  authority_state: MemoryAuthorityState
+  source_kind: MemorySourceKind
   category: MemoryCategory
   domains: MemoryDomain[]
   topics: string[]

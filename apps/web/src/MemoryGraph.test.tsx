@@ -16,6 +16,8 @@ const memoryNodes: MemoryNodeSummary[] = [
     title: 'Oscillink Agent',
     source_path: '20 Projects/Oscillink Agent.md',
     source_status: 'active',
+    authority_state: 'approved',
+    source_kind: 'obsidian',
     category: 'project',
     domains: ['ai_ml'],
     topics: [],
@@ -27,6 +29,8 @@ const memoryNodes: MemoryNodeSummary[] = [
     title: 'Agent Architecture Research',
     source_path: '30 Notes/Research/Agent Research.md',
     source_status: 'active',
+    authority_state: 'curated',
+    source_kind: 'obsidian',
     category: 'research',
     domains: ['ai_ml', 'engineering'],
     topics: ['agent architecture'],
@@ -71,8 +75,8 @@ describe('MemoryGraph', () => {
       />,
     )
 
-    expect(screen.getByRole('img', { name: 'Reviewed memory lattice' })).toBeInTheDocument()
-    expect(screen.getByText('REVIEWED MEMORY · 2 RECORDS')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
+    expect(screen.getByText('PRODUCT MEMORY · 2 RECORDS')).toBeInTheDocument()
     expect(screen.queryByText('FOUNDATION MAP · NOT MEMORY DATA')).not.toBeInTheDocument()
 
     const selected = screen.getByRole('button', { name: 'Focus Oscillink Agent, Projects' })

@@ -84,8 +84,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 
 ### Next verified milestones
 
-1. **Memory truth and review state:** replace the current reviewed-label shortcut with explicit curated, candidate and approved states; default retrieval includes only approved records; the Memory Lattice and inspector show status with text and symbols, not color alone.
-2. **Customer source and proposal flow:** add explicit browser file selection/import, candidate association, a proposal review queue and append-only approve/reject events; do not require removable-volume discovery for this workflow.
+1. **Memory truth and review state:** product-owned `mem_` identities, native candidates, explicit Obsidian synchronization, append-only approve/reject decisions, restart recovery and authority-aware lattice projections are now implemented. Next, expose create, sync and review controls in the browser and make default retrieval approved-only.
+2. **Customer source and proposal flow:** add explicit browser file selection/import, product-record candidate association, a proposal review queue and customer-facing approve/reject actions; do not require removable-volume discovery for this workflow.
 3. **Provider-neutral chat:** add an allowlisted provider registry, deterministic fake-provider contract tests, customer-configurable provider settings, streaming chat and citation/context panels. Local Qwen is one optional adapter, not a milestone dependency.
 4. **Run and context inspector:** expose the event timeline, exact context manifest, included memory, tool requests, budgets, failures and restart/replay state in the workspace.
 5. **Bounded action and pilot packaging:** add one typed read-only tool, workspace export/backup, private authentication and a reproducible pilot deployment before considering public multi-tenancy.
@@ -97,22 +97,22 @@ Each milestone must produce a coherent UI path backed by real typed API behavior
 ## 3. Architecture
 
 ```text
-Obsidian / Git                         Local or cloud model pool
-human governance + reviewed state     Ollama → vLLM/NIM
+Optional sources                       Local or cloud model pool
+Obsidian / files / connectors          Ollama → vLLM/NIM
               │                              │
               └──────────┐       ┌───────────┘
                          ▼       ▼
                     FastAPI control plane
                          │
-              ┌──────────┴──────────┐
-              ▼                     ▼
-       Context compiler       Capability broker
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+       Memory repo  Context compiler  Capability broker
+       IDs/revisions   manifests       typed grants
               │                     │
-     evidence packets          typed tool grants
-              │                     │
-              ▼                     ▼
-      SQLite event ledger      disposable runner
-      + FTS5 projection        local Docker first
+              ├──────────┐          ▼
+              ▼          ▼    disposable runner
+      SQLite events   derived FTS   local Docker first
+      + reviews        projections
               │
               ▼
        Evaluation/promotion lab
@@ -124,8 +124,9 @@ human governance + reviewed state     Ollama → vLLM/NIM
 
 | Record class | Local canonical store | Cloud evolution |
 |---|---|---|
-| Human governance, approved claims, procedures | Obsidian Markdown + Git | Git-backed repository or reviewed content service |
-| Conversations, model calls, tool calls, approvals, outcomes | Append-only SQLite WAL | PostgreSQL append-only/event tables |
+| Product memory identities, revisions and review decisions | Product-owned SQLite repository | PostgreSQL records, immutable revisions and review tables |
+| Customer-authored source documents | Native records or optional Obsidian Markdown | Product editor plus connector/import APIs |
+| Conversations, model calls, tool calls, outcomes | Append-only SQLite WAL | PostgreSQL append-only/event tables |
 | Raw artifacts | Content-addressed local files | S3-compatible object storage |
 | Imported-file provenance and dataset lineage | Append-only SQLite events + immutable artifact manifests | PostgreSQL events + S3 manifests |
 | Lexical/structured retrieval | Rebuildable SQLite + FTS5 | PostgreSQL FTS and relational queries |

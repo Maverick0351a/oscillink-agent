@@ -13,7 +13,7 @@ from typing import Annotated, Literal
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi import status as http_status
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from oscillink_agent import __version__
 from oscillink_agent.domain.capabilities import PortableTarget, ScopeId
@@ -33,7 +33,6 @@ from oscillink_agent.domain.imports import (
     FileImportSelection,
 )
 from oscillink_agent.memory.obsidian import (
-    DocumentId,
     MemoryCategory,
     MemoryDomain,
     ReviewedObsidianIndex,
@@ -47,8 +46,19 @@ from oscillink_agent.memory.projection import (
     project_index,
     project_node,
     project_nodes,
+    project_product_index,
+    project_product_node,
+    project_product_nodes,
     unavailable_index,
     unavailable_nodes,
+)
+from oscillink_agent.memory.repository import (
+    MemoryAuthorityState,
+    MemoryRecordNotFoundError,
+    MemoryReviewConflictError,
+    MemorySyncConflictError,
+    MemoryTransitionConflictError,
+    SQLiteMemoryRepository,
 )
 from oscillink_agent.storage.artifacts import LocalArtifactStore
 from oscillink_agent.storage.imports import (
@@ -105,6 +115,7 @@ def _parse_transport_datetime(value: object) -> datetime:
 
 
 TransportDatetime = Annotated[datetime, BeforeValidator(_parse_transport_datetime)]
+MemoryNodeId = Annotated[str, Field(pattern=r"^(?:doc|mem)_[0-9A-HJKMNP-TV-Z]{26}$")]
 
 
 def _derived_event_id(request_id: str, purpose: str) -> str:
@@ -153,7 +164,51 @@ class ArtifactImportRequest(BaseModel):
     observed_at: TransportDatetime
     scope_id: ScopeId
     target: PortableTarget
-    target_record_id: DocumentId | None = None
+    target_record_id: MemoryNodeId | None = None
+
+
+class NativeMemoryCreateRequest(BaseModel):
+    """Customer-authored candidate memory independent of external sources."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    schema_version: Literal[1]
+    title: Annotated[str, Field(min_length=1, max_length=512)]
+    content: Annotated[str, Field(min_length=1, max_length=2 * 1024 * 1024)]
+    category: MemoryCategory
+    domains: Annotated[tuple[MemoryDomain, ...], Field(min_length=1)]
+    topics: tuple[str, ...] = ()
+
+
+class MemoryReviewRequest(BaseModel):
+    """One externally governed memory approval or rejection."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1]
+    request_id: EventId
+    decision: Literal["approved", "rejected", "superseded"]
+    replacement_record_id: MemoryNodeId | None = None
+
+
+class MemorySourceSyncRequest(BaseModel):
+    """Explicit synchronization request for one configured source adapter."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1]
+    request_id: EventId
+
+
+class MemorySourceSyncResponse(BaseModel):
+    """Sanitized result of a configured source synchronization."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    state: Literal["synced"] = "synced"
+    source_kind: Literal["obsidian"] = "obsidian"
+    record_count: int
 
 
 class ImportedArtifactProjection(BaseModel):
@@ -185,7 +240,7 @@ class CandidateArtifactAssociation(BaseModel):
 
     state: Literal["candidate"] = "candidate"
     review_state: Literal["pending_review"] = "pending_review"
-    target_record_id: DocumentId
+    target_record_id: MemoryNodeId
     event_id: EventId
 
 
@@ -333,13 +388,22 @@ def create_app(
             },
             features={
                 "chat": "planned",
-                "memory_lattice": "planned",
+                "memory_lattice": (
+                    "ready" if (root / "memory.sqlite3").is_file() else "preview"
+                ),
                 "appearance": "preview",
             },
         )
 
     @application.get("/api/v1/memory/index", response_model=MemoryIndexProjection)
     def memory_index() -> MemoryIndexProjection:
+        memory_database = root / "memory.sqlite3"
+        if memory_database.is_file():
+            repository = SQLiteMemoryRepository(memory_database)
+            try:
+                return project_product_index(repository.list())
+            finally:
+                repository.close()
         index, reason = _load_memory_index(vault_root)
         if index is None:
             assert reason is not None
@@ -351,6 +415,17 @@ def create_app(
         category: MemoryCategory | None = None,
         domain: MemoryDomain | None = None,
     ) -> MemoryNodeCollection:
+        memory_database = root / "memory.sqlite3"
+        if memory_database.is_file():
+            repository = SQLiteMemoryRepository(memory_database)
+            try:
+                return project_product_nodes(
+                    repository.list(),
+                    category=category,
+                    domain=domain,
+                )
+            finally:
+                repository.close()
         index, reason = _load_memory_index(vault_root)
         if index is None:
             assert reason is not None
@@ -361,7 +436,31 @@ def create_app(
         "/api/v1/memory/nodes/{node_id}",
         response_model=MemoryNodeDetailResponse,
     )
-    def memory_node(node_id: DocumentId) -> MemoryNodeDetailResponse:
+    def memory_node(node_id: MemoryNodeId) -> MemoryNodeDetailResponse:
+        memory_database = root / "memory.sqlite3"
+        if node_id.startswith("mem_"):
+            if not memory_database.is_file():
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "code": "node_not_found",
+                        "message": "Memory node was not found.",
+                    },
+                )
+            repository = SQLiteMemoryRepository(memory_database)
+            try:
+                record = repository.get(node_id)
+            finally:
+                repository.close()
+            if record is not None:
+                return project_product_node(record)
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "node_not_found",
+                    "message": "Memory node was not found.",
+                },
+            )
         index, reason = _load_memory_index(vault_root)
         if index is None:
             message = (
@@ -383,6 +482,142 @@ def create_app(
                 },
             )
         return project_node(note)
+
+    @application.post(
+        "/api/v1/memory/nodes",
+        response_model=MemoryNodeDetailResponse,
+        status_code=http_status.HTTP_201_CREATED,
+    )
+    def create_memory_node(
+        request: NativeMemoryCreateRequest,
+    ) -> MemoryNodeDetailResponse:
+        repository = SQLiteMemoryRepository(root / "memory.sqlite3")
+        try:
+            record = repository.create_native(
+                title=request.title,
+                content=request.content,
+                category=request.category,
+                domains=request.domains,
+                topics=request.topics,
+                content_hash=(
+                    "sha256:" + hashlib.sha256(request.content.encode("utf-8")).hexdigest()
+                ),
+            )
+            return project_product_node(record)
+        finally:
+            repository.close()
+
+    @application.post(
+        "/api/v1/memory/nodes/{node_id}/reviews",
+        response_model=MemoryNodeDetailResponse,
+    )
+    def review_memory_node(
+        node_id: MemoryNodeId,
+        request: MemoryReviewRequest,
+        idempotency_key: Annotated[
+            str,
+            Header(
+                alias="Idempotency-Key",
+                min_length=1,
+                max_length=128,
+                pattern=_IDEMPOTENCY_KEY_PATTERN,
+            ),
+        ],
+    ) -> MemoryNodeDetailResponse:
+        if not node_id.startswith("mem_"):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "source_record_not_reviewable",
+                    "message": "Synchronize the source into product memory before review.",
+                },
+            )
+        repository = SQLiteMemoryRepository(root / "memory.sqlite3")
+        try:
+            try:
+                record = repository.review(
+                    node_id,
+                    decision=MemoryAuthorityState(request.decision),
+                    event_id=request.request_id,
+                    idempotency_key=idempotency_key,
+                    replacement_record_id=request.replacement_record_id,
+                )
+            except MemoryRecordNotFoundError:
+                raise HTTPException(
+                    status_code=404,
+                    detail={
+                        "code": "node_not_found",
+                        "message": "Memory node was not found.",
+                    },
+                ) from None
+            except MemoryReviewConflictError:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "idempotency_conflict",
+                        "message": "Idempotency key belongs to another review request.",
+                    },
+                ) from None
+            except MemoryTransitionConflictError:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "invalid_transition",
+                        "message": "Review decision violates the authority-state contract.",
+                    },
+                ) from None
+            return project_product_node(record)
+        finally:
+            repository.close()
+
+    @application.post(
+        "/api/v1/memory/sources/obsidian/sync",
+        response_model=MemorySourceSyncResponse,
+    )
+    def sync_obsidian_memory(
+        request: MemorySourceSyncRequest,
+        idempotency_key: Annotated[
+            str,
+            Header(
+                alias="Idempotency-Key",
+                min_length=1,
+                max_length=128,
+                pattern=_IDEMPOTENCY_KEY_PATTERN,
+            ),
+        ],
+    ) -> MemorySourceSyncResponse:
+        index, reason = _load_memory_index(vault_root)
+        if index is None:
+            message = (
+                "Obsidian source is not configured."
+                if reason is MemoryUnavailableReason.VAULT_NOT_CONFIGURED
+                else "Obsidian source is unavailable."
+            )
+            raise HTTPException(
+                status_code=503,
+                detail={"code": "source_unavailable", "message": message},
+            )
+        repository = SQLiteMemoryRepository(root / "memory.sqlite3")
+        try:
+            try:
+                records = repository.sync_obsidian(
+                    source_key="obsidian_primary",
+                    notes=index.notes,
+                    event_id=request.request_id,
+                    idempotency_key=idempotency_key,
+                    snapshot_hash=index.index_hash,
+                )
+            except MemorySyncConflictError:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "idempotency_conflict",
+                        "message": "Idempotency key belongs to another source snapshot.",
+                    },
+                ) from None
+            return MemorySourceSyncResponse(record_count=len(records))
+        finally:
+            repository.close()
 
     @application.post(
         "/api/v1/artifact-imports",
@@ -409,22 +644,35 @@ def create_app(
                     "message": "No local import scope is configured.",
                 },
             )
-        target_note = None
+        target_record_id: str | None = None
         if request.target_record_id is not None:
-            index, _reason = _load_memory_index(vault_root)
-            if index is None:
-                raise HTTPException(
-                    status_code=503,
-                    detail={
-                        "code": "memory_unavailable",
-                        "message": "Reviewed memory is unavailable for association.",
-                    },
+            if request.target_record_id.startswith("mem_"):
+                memory_database = root / "memory.sqlite3"
+                if memory_database.is_file():
+                    repository = SQLiteMemoryRepository(memory_database)
+                    try:
+                        target_record = repository.get(request.target_record_id)
+                    finally:
+                        repository.close()
+                    if target_record is not None:
+                        target_record_id = target_record.id
+            else:
+                index, _reason = _load_memory_index(vault_root)
+                if index is None:
+                    raise HTTPException(
+                        status_code=503,
+                        detail={
+                            "code": "memory_unavailable",
+                            "message": "Reviewed memory is unavailable for association.",
+                        },
+                    )
+                target_note = next(
+                    (note for note in index.notes if note.id == request.target_record_id),
+                    None,
                 )
-            target_note = next(
-                (note for note in index.notes if note.id == request.target_record_id),
-                None,
-            )
-            if target_note is None:
+                if target_note is not None:
+                    target_record_id = target_note.id
+            if target_record_id is None:
                 raise HTTPException(
                     status_code=404,
                     detail={
@@ -477,7 +725,7 @@ def create_app(
                 replay_association: (
                     UnattachedArtifactAssociation | CandidateArtifactAssociation
                 ) = UnattachedArtifactAssociation()
-                if target_note is None:
+                if target_record_id is None:
                     if candidate_event is not None:
                         raise HTTPException(
                             status_code=409,
@@ -500,7 +748,7 @@ def create_app(
                         or candidate_event.causal_parent_ids != (request.request_id,)
                         or candidate_event.artifact_refs != (artifact.artifact_ref,)
                         or candidate_event.payload.get("target_record_id")
-                        != target_note.id
+                        != target_record_id
                         or candidate_event.payload.get("operation")
                         != "artifact_association"
                         or candidate_event.payload.get("status") != "pending_review"
@@ -516,7 +764,7 @@ def create_app(
                             },
                         )
                     replay_association = CandidateArtifactAssociation(
-                        target_record_id=target_note.id,
+                        target_record_id=target_record_id,
                         event_id=candidate_event_id,
                     )
                 return ArtifactImportResponse(
@@ -567,14 +815,14 @@ def create_app(
                     },
                 ) from None
             association: UnattachedArtifactAssociation | CandidateArtifactAssociation
-            if target_note is None:
+            if target_record_id is None:
                 association = UnattachedArtifactAssociation()
             else:
                 candidate_event_id = _derived_event_id(request.request_id, "association")
                 candidate_payload = {
                     "operation": "artifact_association",
                     "status": "pending_review",
-                    "target_record_id": target_note.id,
+                    "target_record_id": target_record_id,
                 }
                 events.append(
                     Event.model_validate(
@@ -599,7 +847,7 @@ def create_app(
                     idempotency_key=_association_idempotency_key(idempotency_key),
                 )
                 association = CandidateArtifactAssociation(
-                    target_record_id=target_note.id,
+                    target_record_id=target_record_id,
                     event_id=candidate_event_id,
                 )
         finally:
