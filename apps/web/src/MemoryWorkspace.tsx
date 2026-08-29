@@ -1,5 +1,5 @@
 import { Network, Search } from 'lucide-react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import type { FeatureState } from './foundationGraph'
 import MemoryGraph from './MemoryGraph'
@@ -7,6 +7,7 @@ import MemoryInspector from './MemoryInspector'
 import {
   loadMemoryNode,
   loadMemoryProjection,
+  reviewMemoryNode,
   type MemoryCategory,
   type MemoryDomain,
   type MemoryNodeDetail,
@@ -26,9 +27,12 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
   const [projection, setProjection] = useState<MemoryProjection | null>(null)
   const [projectionError, setProjectionError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedIdRef = useRef<string | null>(null)
   const [detail, setDetail] = useState<MemoryNodeDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [reviewing, setReviewing] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<MemoryCategory | ''>('')
   const [domainFilter, setDomainFilter] = useState<MemoryDomain | ''>('')
@@ -46,6 +50,11 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
       })
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId
+    setReviewError(null)
+  }, [selectedId])
 
   useEffect(() => {
     if (selectedId === null) {
@@ -120,6 +129,34 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
       : unavailableReason === 'vault_not_found'
         ? 'The configured reviewed-memory source is unavailable.'
         : 'The reviewed-memory index could not be built safely.'
+
+  const handleReview = async (decision: 'approved' | 'rejected') => {
+    if (detail === null || reviewing) return
+    const reviewedId = detail.id
+    setReviewing(true)
+    setReviewError(null)
+    let reviewed: Awaited<ReturnType<typeof reviewMemoryNode>>
+    try {
+      reviewed = await reviewMemoryNode(reviewedId, decision)
+    } catch {
+      if (selectedIdRef.current === reviewedId) {
+        setReviewError('The review decision was not recorded. The displayed authority is unchanged.')
+      }
+      setReviewing(false)
+      return
+    }
+    setDetail((current) => current?.id === reviewedId ? reviewed.node : current)
+    try {
+      const refreshed = await loadMemoryProjection()
+      setProjection(refreshed)
+    } catch {
+      if (selectedIdRef.current === reviewedId) {
+        setReviewError('The review decision was recorded, but the lattice could not refresh.')
+      }
+    } finally {
+      setReviewing(false)
+    }
+  }
 
   return (
     <section className="memory-view">
@@ -258,6 +295,9 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
           domains={domains}
           loading={detailLoading}
           error={detailError}
+          reviewing={reviewing}
+          reviewError={reviewError}
+          onReview={handleReview}
         />
       </div>
         </>

@@ -1,4 +1,13 @@
-import { AlertTriangle, FileText, Link2, LoaderCircle, Sparkles, Tags } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileText,
+  Link2,
+  LoaderCircle,
+  Sparkles,
+  Tags,
+  XCircle,
+} from 'lucide-react'
 
 import type {
   CategoryLegendEntry,
@@ -12,6 +21,9 @@ interface MemoryInspectorProps {
   domains: DomainLegendEntry[]
   loading: boolean
   error: string | null
+  reviewing: boolean
+  reviewError: string | null
+  onReview: (decision: 'approved' | 'rejected') => void
 }
 
 export default function MemoryInspector({
@@ -20,6 +32,9 @@ export default function MemoryInspector({
   domains,
   loading,
   error,
+  reviewing,
+  reviewError,
+  onReview,
 }: MemoryInspectorProps) {
   if (loading) {
     return (
@@ -88,6 +103,32 @@ export default function MemoryInspector({
         <div><dt>TYPE</dt><dd>{node.frontmatter_type}</dd></div>
         <div><dt>LINKS</dt><dd>{node.wikilink_count}</dd></div>
       </dl>
+
+      {node.authority_state === 'candidate' || node.authority_state === 'curated' ? (
+        <section className="memory-review-controls" aria-label="Human memory review">
+          <p>Record an immutable human decision for this revision.</p>
+          <div>
+            <button
+              type="button"
+              className="approve"
+              disabled={reviewing}
+              onClick={() => onReview('approved')}
+            >
+              {reviewing ? <LoaderCircle size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}
+              Approve memory
+            </button>
+            <button
+              type="button"
+              className="reject"
+              disabled={reviewing}
+              onClick={() => onReview('rejected')}
+            >
+              <XCircle size={15} aria-hidden="true" /> Reject memory
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {reviewError !== null ? <p className="review-error" role="alert">{reviewError}</p> : null}
 
       <section className="inspector-section">
         <h4><FileText size={13} aria-hidden="true" /> Source</h4>

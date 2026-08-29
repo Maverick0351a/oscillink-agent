@@ -112,6 +112,14 @@ async function requestJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return response.json() as Promise<T>
 }
 
+const crockfordAlphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+function createEventId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(26))
+  const suffix = Array.from(bytes, (value) => crockfordAlphabet[value % 32]).join('')
+  return `evt_${suffix}`
+}
+
 export async function loadMemoryProjection(signal?: AbortSignal): Promise<MemoryProjection> {
   const [index, collection] = await Promise.all([
     requestJson<MemoryIndexProjection>('/api/v1/memory/index', signal),
@@ -128,4 +136,28 @@ export function loadMemoryNode(
     `/api/v1/memory/nodes/${encodeURIComponent(nodeId)}`,
     signal,
   )
+}
+
+export async function reviewMemoryNode(
+  nodeId: string,
+  decision: 'approved' | 'rejected',
+): Promise<MemoryNodeDetailResponse> {
+  const requestId = createEventId()
+  const response = await fetch(
+    `/api/v1/memory/nodes/${encodeURIComponent(nodeId)}/reviews`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `memory-review-${requestId}`,
+      },
+      body: JSON.stringify({
+        schema_version: 1,
+        request_id: requestId,
+        decision,
+      }),
+    },
+  )
+  if (!response.ok) throw new Error(`memory review failed: ${response.status}`)
+  return response.json() as Promise<MemoryNodeDetailResponse>
 }

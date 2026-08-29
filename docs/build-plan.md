@@ -84,7 +84,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 
 ### Next verified milestones
 
-1. **Memory truth and review state:** product-owned `mem_` identities, native candidates, explicit Obsidian synchronization, append-only approve/reject decisions, restart recovery and authority-aware lattice projections are now implemented. Next, expose create, sync and review controls in the browser and make default retrieval approved-only.
+1. **Memory truth and review state:** product-owned `mem_` identities, native candidates, explicit Obsidian synchronization, append-only approve/reject decisions, restart recovery, authority-aware lattice projections and browser review controls are now implemented. Next, expose native create and explicit source-sync controls in the browser and make default retrieval approved-only.
 2. **Customer source and proposal flow:** add explicit browser file selection/import, product-record candidate association, a proposal review queue and customer-facing approve/reject actions; do not require removable-volume discovery for this workflow.
 3. **Provider-neutral chat:** add an allowlisted provider registry, deterministic fake-provider contract tests, customer-configurable provider settings, streaming chat and citation/context panels. Local Qwen is one optional adapter, not a milestone dependency.
 4. **Run and context inspector:** expose the event timeline, exact context manifest, included memory, tool requests, budgets, failures and restart/replay state in the workspace.

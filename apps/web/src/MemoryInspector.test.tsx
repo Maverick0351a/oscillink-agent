@@ -36,6 +36,9 @@ describe('MemoryInspector', () => {
         domains={domains}
         loading={false}
         error={null}
+        reviewing={false}
+        reviewError={null}
+        onReview={() => undefined}
       />,
     )
 
@@ -58,6 +61,9 @@ describe('MemoryInspector', () => {
         domains={domains}
         loading={false}
         error={null}
+        reviewing={false}
+        reviewError={null}
+        onReview={() => undefined}
       />,
     )
 

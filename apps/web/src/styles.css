@@ -1145,6 +1145,76 @@ button:active:not(:disabled) {
   letter-spacing: 0.5px;
 }
 
+.memory-review-controls {
+  margin-top: 14px;
+  padding: 12px;
+  background: rgb(255 255 255 / 2%);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.memory-review-controls > p {
+  margin: 0 0 9px;
+  color: var(--text-dim);
+  font-size: 8px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.memory-review-controls > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.memory-review-controls button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 9px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 7px;
+  cursor: pointer;
+  transition-property: color, background-color, border-color, transform;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+.memory-review-controls button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.memory-review-controls button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.memory-review-controls .approve {
+  color: var(--cyan-soft);
+  background: rgb(54 241 205 / 5%);
+  border: 1px solid rgb(54 241 205 / 24%);
+}
+
+.memory-review-controls .reject {
+  color: #ff9cac;
+  background: rgb(255 100 124 / 5%);
+  border: 1px solid rgb(255 100 124 / 24%);
+}
+
+.node-inspector > .review-error {
+  margin: 9px 0 0;
+  color: #ff9cac;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.memory-review-controls .lucide-loader-circle {
+  animation: inspector-spin 1.2s linear infinite;
+}
+
 .node-inspector.has-selection {
   min-width: 0;
   overflow: auto;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { loadMemoryNode, loadMemoryProjection } from './memoryApi'
+import { loadMemoryNode, loadMemoryProjection, reviewMemoryNode } from './memoryApi'
 
 const indexResponse = {
   schema_version: 1 as const,
@@ -89,5 +89,33 @@ describe('memory API client', () => {
       expect.any(Object),
     )
     expect(detail.node.classification_basis).toEqual(['frontmatter:type=project'])
+  })
+
+  it('submits a typed idempotent review decision', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(detailResponse), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await reviewMemoryNode('mem_A37PTXSESJE0P4NFJTD7E7RRAH', 'approved')
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      '/api/v1/memory/nodes/mem_A37PTXSESJE0P4NFJTD7E7RRAH/reviews',
+    )
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual(expect.objectContaining({
+      'Content-Type': 'application/json',
+      'Idempotency-Key': expect.stringMatching(/^memory-review-evt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    }))
+    expect(body).toEqual({
+      schema_version: 1,
+      request_id: expect.stringMatching(/^evt_[0-9A-HJKMNP-TV-Z]{26}$/),
+      decision: 'approved',
+    })
   })
 })

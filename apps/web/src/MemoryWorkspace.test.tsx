@@ -75,14 +75,63 @@ function detailResponse(index: number) {
   }
 }
 
-function stubReadyMemory() {
-  const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+function stubReadyMemory(
+  reviewStatus = 200,
+  reviewGate?: Promise<void>,
+  refreshStatus = 200,
+) {
+  let candidateAuthority = 'candidate'
+  let indexRequests = 0
+  const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input)
     let payload: unknown
-    if (path.endsWith('/index')) payload = indexResponse
-    else if (path.endsWith('/nodes')) payload = collectionResponse
+    if (path.endsWith('/index')) {
+      indexRequests += 1
+      if (indexRequests > 1 && refreshStatus !== 200) {
+        return Promise.resolve(new Response(null, { status: refreshStatus }))
+      }
+      payload = indexResponse
+    }
+    else if (path.endsWith('/nodes')) {
+      payload = {
+        ...collectionResponse,
+        nodes: nodes.map((node, index) => (
+          index === 1 ? { ...node, authority_state: candidateAuthority } : node
+        )),
+      }
+    }
+    else if (path.endsWith(`${nodes[1]?.id ?? 'missing'}/reviews`) && init?.method === 'POST') {
+      if (reviewStatus !== 200) {
+        return Promise.resolve(new Response(null, { status: reviewStatus }))
+      }
+      const requestBody = typeof init.body === 'string'
+        ? JSON.parse(init.body) as { decision: string }
+        : { decision: 'approved' }
+      if (reviewGate !== undefined) {
+        return reviewGate.then(() => {
+          candidateAuthority = requestBody.decision
+          return new Response(JSON.stringify({
+            ...detailResponse(1),
+            node: { ...detailResponse(1).node, authority_state: candidateAuthority },
+          }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        })
+      }
+      candidateAuthority = requestBody.decision
+      payload = {
+        ...detailResponse(1),
+        node: { ...detailResponse(1).node, authority_state: candidateAuthority },
+      }
+    }
     else if (path.endsWith(nodes[0]?.id ?? 'missing')) payload = detailResponse(0)
-    else if (path.endsWith(nodes[1]?.id ?? 'missing')) payload = detailResponse(1)
+    else if (path.endsWith(nodes[1]?.id ?? 'missing')) {
+      payload = {
+        ...detailResponse(1),
+        node: { ...detailResponse(1).node, authority_state: candidateAuthority },
+      }
+    }
     else return Promise.resolve(new Response(null, { status: 404 }))
     return Promise.resolve(
       new Response(JSON.stringify(payload), {
@@ -175,6 +224,114 @@ describe('MemoryWorkspace', () => {
 
     expect(screen.getByText('No memory records match the current filters.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'No memory selected' })).toBeInTheDocument()
+  })
+
+  it('lets a human approve a candidate and reflects the governed result', async () => {
+    const fetchMock = stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    expect(
+      await screen.findByRole('heading', { name: 'Agent Architecture Research' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve memory' }))
+
+    expect(await screen.findByText('APPROVED RECORD')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/memory/nodes/mem_PHBCG4C4DKQWX1903XXPVD7ZB6/reviews',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        }),
+      )
+    })
+    expect(screen.queryByRole('button', { name: 'Approve memory' })).not.toBeInTheDocument()
+  })
+
+  it('lets a human reject a candidate and reflects the terminal authority state', async () => {
+    stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    await screen.findByRole('heading', { name: 'Agent Architecture Research' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject memory' }))
+
+    expect(await screen.findByText('REJECTED RECORD')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject memory' })).not.toBeInTheDocument()
+  })
+
+  it('keeps authority unchanged and explains a failed review request', async () => {
+    stubReadyMemory(409)
+    render(<MemoryWorkspace latticeState="ready" />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    await screen.findByRole('heading', { name: 'Agent Architecture Research' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve memory' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The review decision was not recorded. The displayed authority is unchanged.',
+    )
+    expect(screen.getByText('CANDIDATE RECORD')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Approve memory' })).toBeEnabled()
+  })
+
+  it('distinguishes a recorded decision from a failed lattice refresh', async () => {
+    stubReadyMemory(200, undefined, 503)
+    render(<MemoryWorkspace latticeState="ready" />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    await screen.findByRole('heading', { name: 'Agent Architecture Research' })
+    fireEvent.click(screen.getByRole('button', { name: 'Approve memory' }))
+
+    expect(await screen.findByText('APPROVED RECORD')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The review decision was recorded, but the lattice could not refresh.',
+    )
+  })
+
+  it('does not replace the current inspector when an earlier review finishes', async () => {
+    let releaseReview: () => void = () => {}
+    const reviewGate = new Promise<void>((resolve) => { releaseReview = resolve })
+    const fetchMock = stubReadyMemory(200, reviewGate)
+    render(<MemoryWorkspace latticeState="ready" />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    await screen.findByRole('heading', { name: 'Agent Architecture Research' })
+    fireEvent.click(screen.getByRole('button', { name: 'Approve memory' }))
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'project' },
+    })
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+    releaseReview()
+
+    await waitFor(() => {
+      const nodeCollectionCalls = fetchMock.mock.calls.filter(
+        ([input]) => String(input).endsWith('/nodes'),
+      )
+      expect(nodeCollectionCalls).toHaveLength(2)
+    })
+    expect(screen.getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Agent Architecture Research' })).not.toBeInTheDocument()
   })
 
   it('surfaces unavailable memory and keeps System Architecture as a separate honest view', async () => {

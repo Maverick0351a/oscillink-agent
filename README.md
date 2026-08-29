@@ -74,6 +74,8 @@ npm --prefix apps/web run dev
 
 Open `http://127.0.0.1:5173`. Vite proxies `/api` to the local FastAPI process. Set `OSCILLINK_AGENT_DATA_DIR` before launching the API to inspect a non-default runtime directory.
 
+Candidate and curated records expose explicit **Approve memory** and **Reject memory** actions in the inspector. Decisions are sent with typed event identities and idempotency keys, and the lattice refreshes from product-owned state after a successful review.
+
 Run the complete deterministic gate with:
 
 ```bash
