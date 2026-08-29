@@ -471,16 +471,27 @@ def create_app(
                         },
                     )
                 artifact = _replayed_artifact(existing, request)
+                candidate_event = events.get_by_idempotency(
+                    _association_idempotency_key(idempotency_key)
+                )
                 replay_association: (
                     UnattachedArtifactAssociation | CandidateArtifactAssociation
                 ) = UnattachedArtifactAssociation()
-                if target_note is not None:
+                if target_note is None:
+                    if candidate_event is not None:
+                        raise HTTPException(
+                            status_code=409,
+                            detail={
+                                "code": "idempotency_conflict",
+                                "message": (
+                                    "Idempotency key belongs to another import request."
+                                ),
+                            },
+                        )
+                else:
                     candidate_event_id = _derived_event_id(
                         request.request_id,
                         "association",
-                    )
-                    candidate_event = events.get_by_idempotency(
-                        _association_idempotency_key(idempotency_key)
                     )
                     if (
                         candidate_event is None

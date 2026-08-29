@@ -402,6 +402,64 @@ def test_transport_invalid_imports_fail_before_storage(
     assert not data_root.exists()
 
 
+def test_idempotency_key_cannot_drop_existing_candidate_association(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "selected"
+    source_root.mkdir()
+    (source_root / "evidence.txt").write_text("association evidence", encoding="utf-8")
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    (vault / "Record.md").write_text(
+        """---
+type: research-note
+status: active
+---
+# Stable Record
+""",
+        encoding="utf-8",
+        newline="\n",
+    )
+    record_id = build_reviewed_obsidian_index(vault).notes[0].id
+    app = create_app(
+        data_root=tmp_path / "runtime",
+        vault_root=vault,
+        import_scopes={"user_selection": source_root},
+    )
+    request_payload = {
+        "schema_version": 1,
+        "request_id": "evt_01J00000000000000000000111",
+        "observed_at": "2026-08-28T19:41:00Z",
+        "scope_id": "user_selection",
+        "target": "evidence.txt",
+        "target_record_id": record_id,
+    }
+    first = post_import(
+        app,
+        request_payload,
+        idempotency_key="association-removal-conflict-001",
+    )
+    request_payload["target_record_id"] = None
+
+    conflict = post_import(
+        app,
+        request_payload,
+        idempotency_key="association-removal-conflict-001",
+    )
+
+    assert first.status_code == 201, first.text
+    assert conflict.status_code == 409
+    assert conflict.json() == {
+        "detail": {
+            "code": "idempotency_conflict",
+            "message": "Idempotency key belongs to another import request.",
+        }
+    }
+    with sqlite3.connect(tmp_path / "runtime" / "events.sqlite3") as connection:
+        count = connection.execute("SELECT COUNT(*) FROM events").fetchone()
+    assert count == (2,)
+
+
 def test_idempotency_key_cannot_be_reused_for_same_named_different_target(
     tmp_path: Path,
 ) -> None:
