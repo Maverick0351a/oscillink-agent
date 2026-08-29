@@ -121,6 +121,23 @@ export interface MemoryCreateInput {
   architecture_node_ids: ArchitectureNodeId[]
 }
 
+export interface MemorySourceStatus {
+  schema_version: 1
+  source_kind: 'obsidian'
+  state: 'configured' | 'not_configured' | 'unavailable'
+}
+
+export interface MemorySourceSyncResult {
+  schema_version: 1
+  state: 'synced'
+  source_kind: 'obsidian'
+  created: number
+  revised: number
+  unchanged: number
+  missing: number
+  issues: number
+}
+
 export interface MemoryProjection {
   index: MemoryIndexProjection
   collection: MemoryNodeCollection
@@ -164,6 +181,25 @@ export function loadMemoryNode(
     `/api/v1/memory/nodes/${encodeURIComponent(nodeId)}`,
     signal,
   )
+}
+
+export function loadMemorySourceStatus(signal?: AbortSignal): Promise<MemorySourceStatus> {
+  return requestJson<MemorySourceStatus>('/api/v1/memory/sources/obsidian', signal)
+}
+
+export async function syncObsidianSource(): Promise<MemorySourceSyncResult> {
+  const requestId = createEventId()
+  const response = await fetch('/api/v1/memory/sources/obsidian/sync', {
+    method: 'POST',
+    headers: {
+      ...workspaceAuthorizationHeaders(),
+      'Content-Type': 'application/json',
+      'Idempotency-Key': `memory-source-sync-${requestId}`,
+    },
+    body: JSON.stringify({ schema_version: 1, request_id: requestId }),
+  })
+  if (!response.ok) throw new Error(`memory source synchronization failed: ${response.status}`)
+  return response.json() as Promise<MemorySourceSyncResult>
 }
 
 export async function createMemoryNode(

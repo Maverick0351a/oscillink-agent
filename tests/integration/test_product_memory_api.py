@@ -147,6 +147,47 @@ def test_missing_product_record_read_does_not_initialize_storage(tmp_path: Path)
     assert not data_root.exists()
 
 
+def test_obsidian_source_status_is_opaque_and_does_not_scan_or_initialize(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    vault = tmp_path / "private-vault"
+    write_note(vault, "Notes/Invalid.md", "not valid frontmatter")
+    app = create_app(data_root=data_root, vault_root=vault)
+
+    status = request(app, "GET", "/api/v1/memory/sources/obsidian")
+
+    assert status.status_code == 200, status.text
+    assert status.json() == {
+        "schema_version": 1,
+        "source_kind": "obsidian",
+        "state": "configured",
+    }
+    assert str(vault) not in status.text
+    assert not data_root.exists()
+
+
+def test_obsidian_source_status_distinguishes_absent_configuration_and_unavailable_root(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+
+    not_configured = request(
+        create_app(data_root=data_root, vault_root=None),
+        "GET",
+        "/api/v1/memory/sources/obsidian",
+    )
+    unavailable = request(
+        create_app(data_root=data_root, vault_root=tmp_path / "missing-vault"),
+        "GET",
+        "/api/v1/memory/sources/obsidian",
+    )
+
+    assert not_configured.json()["state"] == "not_configured"
+    assert unavailable.json()["state"] == "unavailable"
+    assert not data_root.exists()
+
+
 def test_human_review_is_append_only_and_survives_restart(tmp_path: Path) -> None:
     data_root = tmp_path / "runtime"
     app = create_app(data_root=data_root, vault_root=None)
@@ -357,11 +398,56 @@ The source path is provenance, not product identity.
     )
 
     assert first_sync.status_code == 200, first_sync.text
+    assert first_sync.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 1,
+        "revised": 0,
+        "unchanged": 0,
+        "missing": 0,
+        "issues": 0,
+    }
     first_node = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
     assert first_node["id"].startswith("mem_")
     assert first_node["authority_state"] == "curated"
     assert first_node["source_kind"] == "obsidian"
     assert first_node["source_path"] == "Notes/Original.md"
+
+    replayed_sync = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "sync-original"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FAW",
+        },
+    )
+    assert replayed_sync.status_code == 200, replayed_sync.text
+    assert replayed_sync.json() == first_sync.json()
+
+    unchanged_sync = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "sync-unchanged"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB0",
+        },
+    )
+    assert unchanged_sync.status_code == 200, unchanged_sync.text
+    assert unchanged_sync.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 0,
+        "revised": 0,
+        "unchanged": 1,
+        "missing": 0,
+        "issues": 0,
+    }
 
     write_note(vault, "Notes/Original.md", source + "Changed after the request.\n")
     conflicting_replay = request(
@@ -392,6 +478,16 @@ The source path is provenance, not product identity.
     )
 
     assert second_sync.status_code == 200, second_sync.text
+    assert second_sync.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 0,
+        "revised": 1,
+        "unchanged": 0,
+        "missing": 0,
+        "issues": 0,
+    }
     renamed_node = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
     assert renamed_node["id"] == first_node["id"]
     assert renamed_node["source_path"] == "Notes/Renamed.md"
@@ -421,6 +517,16 @@ The source path is provenance, not product identity.
         },
     )
     assert changed_sync.status_code == 200
+    assert changed_sync.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 0,
+        "revised": 1,
+        "unchanged": 0,
+        "missing": 0,
+        "issues": 0,
+    }
     changed_node = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
     assert changed_node["id"] == first_node["id"]
     assert changed_node["authority_state"] == "curated"
@@ -538,8 +644,69 @@ Source absence must be visible without deleting product history.
     )
 
     assert removed.status_code == 200
+    assert removed.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 0,
+        "revised": 0,
+        "unchanged": 0,
+        "missing": 1,
+        "issues": 0,
+    }
     missing = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
     assert missing["id"] == present["id"]
     assert missing["content_hash"] == present["content_hash"]
     assert missing["source_path"] == "Notes/Continuity.md"
     assert missing["source_status"] == "missing"
+
+
+def test_obsidian_sync_reports_omitted_source_issues(tmp_path: Path) -> None:
+    data_root = tmp_path / "runtime"
+    vault = tmp_path / "vault"
+    write_note(
+        vault,
+        "Notes/Valid.md",
+        """---
+type: note
+status: active
+domains: [software]
+---
+# Valid
+
+This note can be synchronized.
+""",
+    )
+    write_note(
+        vault,
+        "Notes/Invalid.md",
+        """---
+type: unsupported
+---
+# Invalid
+""",
+    )
+    app = create_app(data_root=data_root, vault_root=vault)
+
+    synchronized = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "sync-with-source-issue"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB9",
+        },
+    )
+
+    assert synchronized.status_code == 200, synchronized.text
+    assert synchronized.json() == {
+        "schema_version": 1,
+        "state": "synced",
+        "source_kind": "obsidian",
+        "created": 1,
+        "revised": 0,
+        "unchanged": 0,
+        "missing": 0,
+        "issues": 1,
+    }

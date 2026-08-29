@@ -61,6 +61,33 @@ def test_anonymous_memory_creation_fails_without_initializing_storage(
     assert not data_root.exists()
 
 
+def test_anonymous_source_sync_fails_without_scanning_or_initializing_storage(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    app = create_app(
+        data_root=data_root,
+        vault_root=vault,
+        workspace_credential="test-private-credential",
+    )
+
+    response = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "anonymous-source-sync"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB9",
+        },
+    )
+
+    assert response.status_code == 401, response.json()
+    assert not data_root.exists()
+
+
 def test_anonymous_chat_fails_without_initializing_storage(tmp_path: Path) -> None:
     data_root = tmp_path / "runtime"
     app = create_app(

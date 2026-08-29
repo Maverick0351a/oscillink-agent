@@ -89,7 +89,22 @@ function stubReadyMemory(
   const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input)
     let payload: unknown
-    if (path.endsWith('/index')) {
+    if (path.endsWith('/sources/obsidian/sync') && init?.method === 'POST') {
+      payload = {
+        schema_version: 1,
+        state: 'synced',
+        source_kind: 'obsidian',
+        created: 0,
+        revised: 1,
+        unchanged: 1,
+        missing: 0,
+        issues: 0,
+      }
+    }
+    else if (path.endsWith('/sources/obsidian')) {
+      payload = { schema_version: 1, source_kind: 'obsidian', state: 'configured' }
+    }
+    else if (path.endsWith('/index')) {
       indexRequests += 1
       if (indexRequests > 1 && refreshStatus !== 200) {
         return Promise.resolve(new Response(null, { status: refreshStatus }))
@@ -325,6 +340,24 @@ describe('MemoryWorkspace', () => {
     )
   })
 
+  it('refreshes the lattice only after explicit confirmed source synchronization', async () => {
+    const fetchMock = stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" mutationsEnabled />)
+    await screen.findByText('OBSIDIAN · CONFIGURED')
+    expect(await screen.findByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith('/sync'))).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Synchronize source' }))
+    expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith('/sync'))).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm synchronization' }))
+
+    expect(await screen.findByText('SOURCE SYNCHRONIZED')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([path]) => String(path).endsWith('/index'))).toHaveLength(2)
+    })
+    expect(screen.getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+  })
+
   it('lets a human reject a candidate and reflects the terminal authority state', async () => {
     stubReadyMemory()
     render(<MemoryWorkspace latticeState="ready" />)
@@ -424,6 +457,7 @@ describe('MemoryWorkspace', () => {
       screen.getByRole('img', { name: 'System architecture memory map' }),
     ).toBeInTheDocument()
     expect(screen.getByText('ARCHITECTURE MEMORY · 0 ASSOCIATIONS')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
   })
 })

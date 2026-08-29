@@ -106,7 +106,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Persisted run inspection | preview | Three-event runs work; multi-call/tool reconstruction is not implemented |
 | Governed file import | preview | Backend and adversarial tests exist; browser onboarding is not implemented |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
-| Browser memory creation, source sync and proposal review | planned | Required to close the first customer journey |
+| Browser memory creation, source sync and proposal review | preview | Native creation and confirmed source sync with durable accounting are implemented; browser import and proposal review remain |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
 | Longitudinal evaluation and recovery package | planned | Required before private-pilot release |

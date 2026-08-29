@@ -45,6 +45,16 @@ class MemorySourceSyncRequest(BaseModel):
     request_id: EventId
 
 
+class MemorySourceStatusResponse(BaseModel):
+    """Opaque configuration state for one bounded source adapter."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    source_kind: Literal["obsidian"] = "obsidian"
+    state: Literal["configured", "not_configured", "unavailable"]
+
+
 class MemorySourceSyncResponse(BaseModel):
     """Sanitized result of a configured source synchronization."""
 
@@ -53,4 +63,8 @@ class MemorySourceSyncResponse(BaseModel):
     schema_version: Literal[1] = 1
     state: Literal["synced"] = "synced"
     source_kind: Literal["obsidian"] = "obsidian"
-    record_count: int
+    created: Annotated[int, Field(ge=0)]
+    revised: Annotated[int, Field(ge=0)]
+    unchanged: Annotated[int, Field(ge=0)]
+    missing: Annotated[int, Field(ge=0)]
+    issues: Annotated[int, Field(ge=0)]

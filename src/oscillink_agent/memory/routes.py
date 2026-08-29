@@ -10,6 +10,7 @@ from fastapi import status as http_status
 from oscillink_agent.memory.contracts import (
     MemoryNodeId,
     MemoryReviewRequest,
+    MemorySourceStatusResponse,
     MemorySourceSyncRequest,
     MemorySourceSyncResponse,
     NativeMemoryCreateRequest,
@@ -258,12 +259,13 @@ def build_memory_router(
         repository = SQLiteMemoryRepository(data_root / "memory.sqlite3")
         try:
             try:
-                records = repository.sync_obsidian(
+                result = repository.sync_obsidian(
                     source_key="obsidian_primary",
                     notes=index.notes,
                     event_id=request.request_id,
                     idempotency_key=idempotency_key,
                     snapshot_hash=index.index_hash,
+                    issue_count=len(index.issues),
                 )
             except MemorySyncConflictError:
                 raise HTTPException(
@@ -273,8 +275,25 @@ def build_memory_router(
                         "message": "Idempotency key belongs to another source snapshot.",
                     },
                 ) from None
-            return MemorySourceSyncResponse(record_count=len(records))
+            return MemorySourceSyncResponse(
+                created=result.created,
+                revised=result.revised,
+                unchanged=result.unchanged,
+                missing=result.missing,
+                issues=result.issues,
+            )
         finally:
             repository.close()
+
+    @router.get(
+        "/api/v1/memory/sources/obsidian",
+        response_model=MemorySourceStatusResponse,
+    )
+    def obsidian_source_status() -> MemorySourceStatusResponse:
+        if vault_root is None:
+            return MemorySourceStatusResponse(state="not_configured")
+        if vault_root.is_dir():
+            return MemorySourceStatusResponse(state="configured")
+        return MemorySourceStatusResponse(state="unavailable")
 
     return router

@@ -91,6 +91,17 @@ class ProductMemoryRecord(FrozenModel):
     architecture_node_ids: tuple[ArchitectureNodeId, ...] = ()
 
 
+class MemorySourceSyncResult(FrozenModel):
+    """Repository accounting for one atomic configured-source synchronization."""
+
+    records: tuple[ProductMemoryRecord, ...]
+    created: int
+    revised: int
+    unchanged: int
+    missing: int
+    issues: int
+
+
 class SQLiteMemoryRepository:
     """Persist product-owned memory records independently of source adapters."""
 
@@ -153,10 +164,43 @@ class SQLiteMemoryRepository:
                 event_id TEXT NOT NULL UNIQUE,
                 idempotency_key TEXT NOT NULL UNIQUE,
                 source_key TEXT NOT NULL,
-                snapshot_hash TEXT NOT NULL
+                snapshot_hash TEXT NOT NULL,
+                created_count INTEGER NOT NULL DEFAULT 0,
+                revised_count INTEGER NOT NULL DEFAULT 0,
+                unchanged_count INTEGER NOT NULL DEFAULT 0,
+                missing_count INTEGER NOT NULL DEFAULT 0,
+                issue_count INTEGER NOT NULL DEFAULT 0
             ) STRICT
             """
         )
+        sync_columns = {
+            str(row[1])
+            for row in self._connection.execute("PRAGMA table_info(memory_source_syncs)")
+        }
+        if "created_count" not in sync_columns:
+            self._connection.execute(
+                "ALTER TABLE memory_source_syncs ADD COLUMN created_count "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        if "revised_count" not in sync_columns:
+            self._connection.execute(
+                "ALTER TABLE memory_source_syncs ADD COLUMN revised_count "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        if "unchanged_count" not in sync_columns:
+            self._connection.execute(
+                "ALTER TABLE memory_source_syncs ADD COLUMN unchanged_count "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        if "missing_count" not in sync_columns:
+            self._connection.execute(
+                "ALTER TABLE memory_source_syncs ADD COLUMN missing_count "
+                "INTEGER NOT NULL DEFAULT 0"
+            )
+        if "issue_count" not in sync_columns:
+            self._connection.execute(
+                "ALTER TABLE memory_source_syncs ADD COLUMN issue_count INTEGER NOT NULL DEFAULT 0"
+            )
 
     def create_native(
         self,
@@ -218,7 +262,8 @@ class SQLiteMemoryRepository:
         event_id: str,
         idempotency_key: str,
         snapshot_hash: str,
-    ) -> tuple[ProductMemoryRecord, ...]:
+        issue_count: int,
+    ) -> MemorySourceSyncResult:
         """Synchronize curated source records without granting approval."""
 
         try:
@@ -229,6 +274,7 @@ class SQLiteMemoryRepository:
                 event_id=event_id,
                 idempotency_key=idempotency_key,
                 snapshot_hash=snapshot_hash,
+                issue_count=issue_count,
             )
         except Exception:
             self._connection.rollback()
@@ -244,24 +290,34 @@ class SQLiteMemoryRepository:
         event_id: str,
         idempotency_key: str,
         snapshot_hash: str,
-    ) -> tuple[ProductMemoryRecord, ...]:
+        issue_count: int,
+    ) -> MemorySourceSyncResult:
 
         if _IDEMPOTENCY_KEY.fullmatch(idempotency_key) is None:
             raise ValueError("invalid source-sync idempotency key")
         expected = (event_id, source_key, snapshot_hash)
         existing = self._connection.execute(
             """
-            SELECT event_id, source_key, snapshot_hash
+            SELECT event_id, source_key, snapshot_hash,
+                   created_count, revised_count, unchanged_count, missing_count, issue_count
             FROM memory_source_syncs
             WHERE idempotency_key = ?
             """,
             (idempotency_key,),
         ).fetchone()
         if existing is not None:
-            if existing != expected:
+            if existing[:3] != expected:
                 raise MemorySyncConflictError(idempotency_key)
-            return tuple(
+            records = tuple(
                 record for record in self.list() if record.source_key == source_key
+            )
+            return MemorySourceSyncResult(
+                records=records,
+                created=int(existing[3]),
+                revised=int(existing[4]),
+                unchanged=int(existing[5]),
+                missing=int(existing[6]),
+                issues=int(existing[7]),
             )
         event_owner = self._connection.execute(
             "SELECT idempotency_key FROM memory_source_syncs WHERE event_id = ?",
@@ -272,6 +328,10 @@ class SQLiteMemoryRepository:
 
         current_locators = {note.source_path for note in notes}
         synchronized: list[ProductMemoryRecord] = []
+        created = 0
+        revised = 0
+        unchanged = 0
+        missing = 0
         for note in notes:
             binding = self._connection.execute(
                 """
@@ -298,6 +358,19 @@ class SQLiteMemoryRepository:
                     previous_locator = str(renamed[0][1])
             if record_id is None:
                 record_id = _new_record_id()
+                is_new = True
+            else:
+                is_new = False
+
+            stored_row = self._connection.execute(
+                "SELECT record_json FROM memory_records WHERE record_id = ?",
+                (record_id,),
+            ).fetchone()
+            stored_record = (
+                None
+                if stored_row is None
+                else ProductMemoryRecord.model_validate_json(stored_row[0])
+            )
 
             record = ProductMemoryRecord(
                 id=record_id,
@@ -315,6 +388,12 @@ class SQLiteMemoryRepository:
                 wikilinks=note.wikilinks,
                 classification_basis=note.classification_basis,
             )
+            if is_new:
+                created += 1
+            elif stored_record == record:
+                unchanged += 1
+            else:
+                revised += 1
             self._write_record_locked(record)
             if previous_locator is not None:
                 self._connection.execute(
@@ -356,15 +435,34 @@ class SQLiteMemoryRepository:
             stored = ProductMemoryRecord.model_validate_json(encoded_row[0])
             if stored.source_status != "missing":
                 self._write_record_locked(stored.model_copy(update={"source_status": "missing"}))
+                missing += 1
         self._connection.execute(
             """
             INSERT INTO memory_source_syncs (
-                event_id, idempotency_key, source_key, snapshot_hash
-            ) VALUES (?, ?, ?, ?)
+                event_id, idempotency_key, source_key, snapshot_hash,
+                created_count, revised_count, unchanged_count, missing_count, issue_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (event_id, idempotency_key, source_key, snapshot_hash),
+            (
+                event_id,
+                idempotency_key,
+                source_key,
+                snapshot_hash,
+                created,
+                revised,
+                unchanged,
+                missing,
+                issue_count,
+            ),
         )
-        return tuple(synchronized)
+        return MemorySourceSyncResult(
+            records=tuple(synchronized),
+            created=created,
+            revised=revised,
+            unchanged=unchanged,
+            missing=missing,
+            issues=issue_count,
+        )
 
     def list(self) -> tuple[ProductMemoryRecord, ...]:
         rows = self._connection.execute(

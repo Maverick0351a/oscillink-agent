@@ -5,6 +5,7 @@ import {
   loadMemoryNode,
   loadMemoryProjection,
   reviewMemoryNode,
+  syncObsidianSource,
 } from './memoryApi'
 
 const indexResponse = {
@@ -180,6 +181,39 @@ describe('memory API client', () => {
       schema_version: 1,
       request_id: expect.stringMatching(/^evt_[0-9A-HJKMNP-TV-Z]{26}$/),
       decision: 'approved',
+    })
+  })
+
+  it('submits an explicit typed idempotent source synchronization request', async () => {
+    const response = {
+      schema_version: 1,
+      state: 'synced',
+      source_kind: 'obsidian',
+      created: 1,
+      revised: 0,
+      unchanged: 0,
+      missing: 0,
+      issues: 0,
+    }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await syncObsidianSource()
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(String(init.body)) as Record<string, unknown>
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/memory/sources/obsidian/sync')
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual(expect.objectContaining({
+      'Content-Type': 'application/json',
+      'Idempotency-Key': expect.stringMatching(/^memory-source-sync-evt_[0-9A-HJKMNP-TV-Z]{26}$/),
+    }))
+    expect(body).toEqual({
+      schema_version: 1,
+      request_id: expect.stringMatching(/^evt_[0-9A-HJKMNP-TV-Z]{26}$/),
     })
   })
 })

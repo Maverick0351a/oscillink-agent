@@ -5,6 +5,7 @@ import { buildFoundationGraph, type FeatureState } from './foundationGraph'
 import MemoryCreatePanel from './MemoryCreatePanel'
 import MemoryGraph from './MemoryGraph'
 import MemoryInspector from './MemoryInspector'
+import SourceSyncPanel from './SourceSyncPanel'
 import {
   loadMemoryNode,
   loadMemoryProjection,
@@ -289,6 +290,11 @@ export default function MemoryWorkspace({
     }
   }
 
+  const handleSynchronized = async () => {
+    const refreshed = await loadMemoryProjection()
+    setProjection(refreshed)
+  }
+
   if (embeddedArchitecture) {
     return (
       <ArchitectureMemoryPanel
@@ -319,7 +325,10 @@ export default function MemoryWorkspace({
 
       <section className="memory-command-deck" aria-label="Memory workspace controls">
         {activeProjection === 'memory' ? (
-          <MemoryCreatePanel enabled={mutationsEnabled} onCreated={handleCreated} />
+          <>
+            <MemoryCreatePanel enabled={mutationsEnabled} onCreated={handleCreated} />
+            <SourceSyncPanel enabled={mutationsEnabled} onSynchronized={handleSynchronized} />
+          </>
         ) : null}
         <div className="memory-projection-tabs" aria-label="Memory projection view">
           <button
