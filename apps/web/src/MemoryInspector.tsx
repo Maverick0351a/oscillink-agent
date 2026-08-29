@@ -23,6 +23,7 @@ interface MemoryInspectorProps {
   error: string | null
   reviewing: boolean
   reviewError: string | null
+  unavailable?: boolean
   onReview: (decision: 'approved' | 'rejected') => void
 }
 
@@ -34,6 +35,7 @@ export default function MemoryInspector({
   error,
   reviewing,
   reviewError,
+  unavailable = false,
   onReview,
 }: MemoryInspectorProps) {
   if (loading) {
@@ -63,8 +65,12 @@ export default function MemoryInspector({
       <aside className="node-inspector" aria-label="Memory node inspector">
         <span className="section-index">NODE INSPECTOR</span>
         <div className="inspector-empty"><Sparkles size={24} aria-hidden="true" /></div>
-        <h3>No memory selected</h3>
-        <p>Select a memory record to inspect its authority, source, digest, labels, and links.</p>
+        <h3>{unavailable ? 'No memory available' : 'No memory selected'}</h3>
+        <p>
+          {unavailable
+            ? 'Create native memory or synchronize a reviewed source to begin.'
+            : 'Select a memory record to inspect its authority, source, digest, labels, and links.'}
+        </p>
       </aside>
     )
   }

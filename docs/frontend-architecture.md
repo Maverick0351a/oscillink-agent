@@ -16,13 +16,14 @@ The browser never opens vault paths, SQLite databases, or artifact paths directl
 
 `apps/web` is a React and TypeScript Vite application. It contains:
 
-- an accessible Chat and Memory Lattice application shell;
+- a unified accessible agent workspace with Chat, embedded terminal and System Architecture memory;
 - live `/api/v1/status` telemetry;
 - a disabled chat composer while the model runtime is unavailable;
-- a local SVG foundation avatar identified as an interface preview;
+- a local SVG foundation avatar incorporated into the chat header as active agent presence;
 - a projected-3D reviewed-memory lattice with stable-record focus, search, category/domain filters and an exact-provenance inspector;
 - browser approve/reject controls for candidate and curated product records, with pending, failure and refresh states;
-- the neural architecture scaffold retained as a separate System Architecture view clearly marked as non-memory data;
+- an execution-locked Workspace Terminal drawer inside Chat that exposes scope, sandbox, network, budget and audit prerequisites without creating a process;
+- a System Architecture of seven named memory containers with explicit revision-owned memory associations and a node-detail sidebar;
 - reduced-motion and responsive layout support.
 
 The Python API exposes read-only status inspection and a typed reviewed-memory projection. It does not create runtime directories during a health or memory request. Existing ledgers are inspected through a read-only SQLite connection, artifact counts include only valid content-addressed object paths, and memory responses expose only vault-relative source paths.
@@ -79,11 +80,11 @@ The UI must expose:
 
 The projection is disposable. Rebuilding it from canonical records must reproduce stable logical node identities.
 
-The implemented reviewed-memory workspace loads projection health and sanitized node summaries from the typed API, then requests focused detail by stable node ID. Category is always represented by label, symbol and color; domains remain independent labels. The inspector exposes relative source path, SHA-256 digest, source status, classification basis, topics and exact wikilinks. Search and category/domain filtering operate over the sanitized browser snapshot. When filtering hides the focused record, focus moves to the first visible stable record or clears when no records remain.
+The implemented reviewed-memory workspace loads projection health and sanitized node summaries from the typed API, then requests focused detail by stable node ID. A compact command deck retains the dedicated governance projection, search and filters; irrelevant filters and taxonomy labels are hidden when no product memory exists, and populated views show only categories and domains represented by current records. The unified agent workspace additionally projects explicit memory associations into seven System Architecture containers: Identity & Role, Goals & Commitments, Projects & Work, Knowledge & Research, People & Relationships, Decisions & Lessons, and Preferences & Context. Selecting a container opens a dismissible sidebar with associated record title, category, domains, source kind and authority state. Architecture placement is navigation, not authority, and selection never approves or mutates memory.
 
 The browser does not synthesize category, proximity or similarity edges. In the current projection, an edge appears only when an exact wikilink in the focused detail resolves to another visible reviewed record. Structural, reviewed, inferred and retrieval-session edges will remain visually and semantically distinct as those typed APIs are added.
 
-The shared renderer uses deterministic XYZ coordinates projected onto an application-owned Canvas 2D surface. Reviewed records use stable ID-derived positions; foundation components retain their authored coordinates. Spherical nodes are depth-sorted, and curved synapses carry bounded visual signal pulses. Pointer drag and arrow keys orbit the field; wheel and plus/minus inputs adjust focus. A keyboard-accessible record roster provides deterministic node selection. Below 520 CSS pixels, reviewed-memory coordinates use a compact density and the roster/inspector become the labeling surface so Canvas text cannot collide or clip; architecture labels retain their authored behavior. `prefers-reduced-motion` disables autonomous rotation and pulse animation while preserving the complete static graph. The renderer is a disposable view and cannot alter graph records, review state, or authority.
+The shared renderer uses deterministic XYZ coordinates projected onto an application-owned Canvas 2D surface. Reviewed records use stable ID-derived positions; architecture containers retain their authored coordinates. Spherical nodes are depth-sorted, and curved synapses carry bounded visual signal pulses. Pointer drag and arrow keys orbit the field; wheel and plus/minus inputs adjust focus. A keyboard-accessible roster provides deterministic container and record selection. Narrow projections reduce spatial density so labels cannot clip. Cyan denotes user selection; orange is reserved for architecture containers present in a typed active agent-retrieval state. User selection is never presented as retrieval activity, and the current unavailable model runtime truthfully reports no active retrieval. `prefers-reduced-motion` disables autonomous rotation and pulse animation while preserving the complete static graph. The renderer is a disposable view and cannot alter graph records, review state, or authority.
 
 ## Transport and deployment
 
@@ -93,7 +94,9 @@ Loopback is not authentication. Before enabling chat or mutation endpoints, add 
 
 ## Governed terminal direction
 
-The browser may eventually expose a Workspace Terminal, but never a direct or unrestricted host shell. The first terminal-adjacent surface should be a structured command runner tied to an authenticated workspace, actor, typed grant, bounded process, sanitized output and append-only run record. A persistent human-interactive PTY follows only after process-tree cancellation, reconnect/orphan handling, secret redaction, terminal-escape sanitization and sandbox policy are verified. Agent-proposed commands are inert until authorized, and agent-invoked commands require narrower grants than human-interactive use. See [`workspace-terminal.md`](workspace-terminal.md).
+The browser now exposes a truthful Workspace Terminal preview as a drawer within Chat, but never a direct or unrestricted host shell. The preview keeps command input disabled and identifies its execution envelope as unavailable until a workspace, sandbox policy and typed grant exist; it does not simulate a process or successful command. Moving the terminal into Chat changes interaction and placement only, not its authorization boundary.
+
+The first executable surface should be a structured command runner tied to an authenticated workspace, actor, typed grant, bounded process, sanitized output and append-only run record. A persistent human-interactive PTY follows only after process-tree cancellation, reconnect/orphan handling, secret redaction, terminal-escape sanitization and sandbox policy are verified. Agent-proposed commands are inert until authorized, and agent-invoked commands require narrower grants than human-interactive use. See [`workspace-terminal.md`](workspace-terminal.md).
 
 ## Verification
 

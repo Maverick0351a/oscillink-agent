@@ -13,10 +13,12 @@ const indexResponse = {
   categories: [
     { category: 'project', label: 'Projects', color: '#ff4fd8', symbol: 'P' },
     { category: 'research', label: 'Research', color: '#36f1cd', symbol: 'R' },
+    { category: 'tooling', label: 'Tooling', color: '#8a7dff', symbol: 'T' },
   ],
   domains: [
     { domain: 'ai_ml', label: 'AI / ML' },
     { domain: 'engineering', label: 'Engineering' },
+    { domain: 'science', label: 'Science' },
   ],
   issues: [],
 }
@@ -34,6 +36,7 @@ const nodes = [
     topics: [],
     content_hash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     wikilink_count: 1,
+    architecture_node_ids: ['projects-work', 'decisions-lessons'],
   },
   {
     id: 'mem_PHBCG4C4DKQWX1903XXPVD7ZB6',
@@ -47,6 +50,7 @@ const nodes = [
     topics: ['agent architecture'],
     content_hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
     wikilink_count: 1,
+    architecture_node_ids: ['knowledge-research'],
   },
 ]
 
@@ -185,11 +189,18 @@ describe('MemoryWorkspace', () => {
     render(<MemoryWorkspace latticeState="ready" />)
 
     expect(await screen.findByText('READY · 2 MEMORY RECORDS')).toBeInTheDocument()
+    const controls = screen.getByRole('region', { name: 'Memory workspace controls' })
+    expect(within(controls).getByRole('button', { name: 'Product Memory' })).toBeInTheDocument()
+    expect(within(controls).getByRole('searchbox', { name: 'Search product memory' })).toBeInTheDocument()
+    const visualization = screen.getByRole('region', { name: 'Memory visualization' })
     expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
-    const legend = screen.getByRole('list', { name: 'Memory category legend' })
+    const legend = within(visualization).getByRole('list', { name: 'Memory category legend' })
     expect(within(legend).getByText('Projects')).toBeInTheDocument()
     expect(within(legend).getByText('Research')).toBeInTheDocument()
     expect(within(legend).getByText('P')).toBeInTheDocument()
+    expect(within(legend).queryByText('Tooling')).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'T · Tooling' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Science' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
     expect(screen.getByText('APPROVED RECORD')).toBeInTheDocument()
     expect(screen.getByText('OBSIDIAN SOURCE')).toBeInTheDocument()
@@ -200,6 +211,26 @@ describe('MemoryWorkspace', () => {
         expect.any(Object),
       )
     })
+  })
+
+  it('opens architecture nodes as memory containers with explicit associated records', async () => {
+    stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" />)
+    expect(await screen.findByText('READY · 2 MEMORY RECORDS')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'System Architecture' }))
+
+    expect(screen.getByRole('img', { name: 'System architecture memory map' })).toBeInTheDocument()
+    expect(screen.getByText('ARCHITECTURE MEMORY · 3 ASSOCIATIONS')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Inspect Decisions & Lessons, 1 associated memory record',
+    }))
+
+    const inspector = screen.getByRole('complementary', { name: 'Architecture memory inspector' })
+    expect(within(inspector).getByRole('heading', { name: 'Decisions & Lessons' })).toBeInTheDocument()
+    expect(within(inspector).getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+    expect(within(inspector).getByText('APPROVED')).toBeInTheDocument()
+    expect(within(inspector).getByText('1 associated record')).toBeInTheDocument()
   })
 
   it('combines search, category, and domain filters without retaining hidden focus', async () => {
@@ -334,20 +365,24 @@ describe('MemoryWorkspace', () => {
     expect(screen.queryByRole('heading', { name: 'Agent Architecture Research' })).not.toBeInTheDocument()
   })
 
-  it('surfaces unavailable memory and keeps System Architecture as a separate honest view', async () => {
+  it('surfaces unavailable memory while keeping empty architecture containers truthful', async () => {
     const fetchMock = stubUnavailableMemory()
     render(<MemoryWorkspace latticeState="preview" />)
 
     expect(await screen.findByText('MEMORY UNAVAILABLE')).toBeInTheDocument()
     expect(screen.getByText(/no product-owned memory repository is initialized/i)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
+    expect(screen.getByText('Create or synchronize memory to populate this lattice.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'No memory available' })).toBeInTheDocument()
+    expect(screen.queryByRole('searchbox', { name: 'Search product memory' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Memory category legend' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'System Architecture' }))
 
     expect(
-      screen.getByRole('img', { name: 'Foundation memory architecture map' }),
+      screen.getByRole('img', { name: 'System architecture memory map' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('FOUNDATION MAP · NOT MEMORY DATA')).toBeInTheDocument()
+    expect(screen.getByText('ARCHITECTURE MEMORY · 0 ASSOCIATIONS')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

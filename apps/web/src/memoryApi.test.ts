@@ -73,6 +73,30 @@ describe('memory API client', () => {
     expect(projection.collection.nodes[0]?.title).toBe('Oscillink Agent')
   })
 
+  it('retries the complete projection when index and nodes use different snapshots', async () => {
+    const nextHash = 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+    const responses = [
+      indexResponse,
+      { ...collectionResponse, index_hash: nextHash },
+      { ...indexResponse, index_hash: nextHash },
+      { ...collectionResponse, index_hash: nextHash },
+    ]
+    const fetchMock = vi.fn().mockImplementation(() => {
+      const payload = responses.shift()
+      return Promise.resolve(new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const projection = await loadMemoryProjection()
+
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(projection.index.index_hash).toBe(nextHash)
+    expect(projection.collection.index_hash).toBe(nextHash)
+  })
+
   it('loads focused inspector metadata by encoded stable ID', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(detailResponse), {

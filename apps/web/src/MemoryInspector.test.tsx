@@ -20,6 +20,7 @@ const node: MemoryNodeDetail = {
   topics: ['long-term memory'],
   content_hash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   wikilink_count: 1,
+  architecture_node_ids: ['projects-work'],
   frontmatter_type: 'project',
   wikilinks: ['30 Notes/Research/Agent Research'],
   classification_basis: ['frontmatter:type=project', 'metadata:area=AI Research'],

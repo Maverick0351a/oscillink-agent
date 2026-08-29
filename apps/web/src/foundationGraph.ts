@@ -1,10 +1,12 @@
+import type { ArchitectureNodeId } from './memoryApi'
+
 export type FeatureState = 'planned' | 'preview' | 'ready'
 
 export type Point3D = readonly [x: number, y: number, z: number]
 export type NeuralTone = 'authority' | 'projection' | 'memory'
 
 export interface FoundationNode {
-  id: string
+  id: ArchitectureNodeId
   label: string
   detail: string
   kind: 'system_component'
@@ -16,8 +18,8 @@ export interface FoundationNode {
 
 export interface FoundationConnection {
   id: string
-  source: string
-  target: string
+  source: ArchitectureNodeId
+  target: ArchitectureNodeId
   kind: 'projection' | 'lineage' | 'evidence'
   curvature: number
   phase: number
@@ -32,9 +34,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
   return {
     nodes: [
       {
-        id: 'obsidian-authority',
-        label: 'Reviewed Obsidian',
-        detail: 'Human authority',
+        id: 'identity-role',
+        label: 'Identity & Role',
+        detail: 'Purpose, identity, and operating role',
         kind: 'system_component',
         state: 'ready',
         position: [-1.35, -0.18, -0.58],
@@ -42,9 +44,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'authority',
       },
       {
-        id: 'fts-index',
-        label: 'FTS5 Index',
-        detail: 'Rebuildable projection',
+        id: 'goals-commitments',
+        label: 'Goals & Commitments',
+        detail: 'Outcomes, promises, and finish lines',
         kind: 'system_component',
         state: latticeState,
         position: [-0.58, 0.88, 0.08],
@@ -52,9 +54,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'projection',
       },
       {
-        id: 'cited-retrieval',
-        label: 'Cited Retrieval',
-        detail: 'Evidence packets',
+        id: 'projects-work',
+        label: 'Projects & Work',
+        detail: 'Active work, milestones, and deliverables',
         kind: 'system_component',
         state: latticeState,
         position: [0.72, 0.76, -0.24],
@@ -62,9 +64,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'projection',
       },
       {
-        id: 'memory-lattice',
-        label: 'Memory Lattice',
-        detail: 'Typed provenance graph',
+        id: 'knowledge-research',
+        label: 'Knowledge & Research',
+        detail: 'Evidence, concepts, and learned models',
         kind: 'system_component',
         state: latticeState,
         position: [0, 0, 0.52],
@@ -72,9 +74,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'memory',
       },
       {
-        id: 'temporal-view',
-        label: 'Temporal View',
-        detail: 'Valid-time projection',
+        id: 'people-relationships',
+        label: 'People & Relationships',
+        detail: 'People, teams, and interaction context',
         kind: 'system_component',
         state: latticeState,
         position: [-0.68, -0.86, -0.1],
@@ -82,9 +84,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'projection',
       },
       {
-        id: 'contradiction-map',
-        label: 'Contradiction Map',
-        detail: 'Correction lineage',
+        id: 'decisions-lessons',
+        label: 'Decisions & Lessons',
+        detail: 'Choices, corrections, and outcomes',
         kind: 'system_component',
         state: latticeState,
         position: [0.62, -0.92, 0.18],
@@ -92,9 +94,9 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
         tone: 'projection',
       },
       {
-        id: 'provenance',
-        label: 'Provenance',
-        detail: 'Source and artifact lineage',
+        id: 'preferences-context',
+        label: 'Preferences & Context',
+        detail: 'Working style, constraints, and environment',
         kind: 'system_component',
         state: latticeState,
         position: [1.36, -0.14, -0.46],
@@ -103,15 +105,15 @@ export function buildFoundationGraph(latticeState: FeatureState): FoundationGrap
       },
     ],
     connections: [
-      { id: 'authority-index', source: 'obsidian-authority', target: 'fts-index', kind: 'projection', curvature: 0.24, phase: 0.02 },
-      { id: 'authority-temporal', source: 'obsidian-authority', target: 'temporal-view', kind: 'projection', curvature: 0.3, phase: 0.31 },
-      { id: 'index-lattice', source: 'fts-index', target: 'memory-lattice', kind: 'projection', curvature: 0.22, phase: 0.58 },
-      { id: 'temporal-lattice', source: 'temporal-view', target: 'memory-lattice', kind: 'lineage', curvature: 0.28, phase: 0.78 },
-      { id: 'retrieval-lattice', source: 'cited-retrieval', target: 'memory-lattice', kind: 'evidence', curvature: 0.26, phase: 0.18 },
-      { id: 'contradiction-lattice', source: 'contradiction-map', target: 'memory-lattice', kind: 'lineage', curvature: 0.32, phase: 0.45 },
-      { id: 'provenance-lattice', source: 'provenance', target: 'memory-lattice', kind: 'lineage', curvature: 0.25, phase: 0.67 },
-      { id: 'index-retrieval', source: 'fts-index', target: 'cited-retrieval', kind: 'evidence', curvature: 0.34, phase: 0.89 },
-      { id: 'contradiction-provenance', source: 'contradiction-map', target: 'provenance', kind: 'lineage', curvature: 0.29, phase: 0.12 },
+      { id: 'identity-goals', source: 'identity-role', target: 'goals-commitments', kind: 'lineage', curvature: 0.24, phase: 0.02 },
+      { id: 'identity-people', source: 'identity-role', target: 'people-relationships', kind: 'lineage', curvature: 0.3, phase: 0.31 },
+      { id: 'goals-knowledge', source: 'goals-commitments', target: 'knowledge-research', kind: 'projection', curvature: 0.22, phase: 0.58 },
+      { id: 'people-knowledge', source: 'people-relationships', target: 'knowledge-research', kind: 'evidence', curvature: 0.28, phase: 0.78 },
+      { id: 'projects-knowledge', source: 'projects-work', target: 'knowledge-research', kind: 'evidence', curvature: 0.26, phase: 0.18 },
+      { id: 'decisions-knowledge', source: 'decisions-lessons', target: 'knowledge-research', kind: 'lineage', curvature: 0.32, phase: 0.45 },
+      { id: 'context-knowledge', source: 'preferences-context', target: 'knowledge-research', kind: 'lineage', curvature: 0.25, phase: 0.67 },
+      { id: 'goals-projects', source: 'goals-commitments', target: 'projects-work', kind: 'projection', curvature: 0.34, phase: 0.89 },
+      { id: 'decisions-context', source: 'decisions-lessons', target: 'preferences-context', kind: 'lineage', curvature: 0.29, phase: 0.12 },
     ],
   }
 }

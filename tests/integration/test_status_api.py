@@ -45,11 +45,14 @@ def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path
         "storage": {
             "ledger": {"state": "not_initialized", "record_count": 0},
             "artifacts": {"state": "not_initialized", "record_count": 0},
+            "memory": {"state": "not_initialized", "record_count": 0},
         },
         "features": {
-            "chat": "planned",
+            "chat": "ready",
+            "capability_broker": "preview",
             "memory_lattice": "preview",
             "appearance": "preview",
+            "workspace_terminal": "preview",
         },
     }
     assert not data_root.exists()
@@ -88,4 +91,20 @@ def test_status_reports_records_from_initialized_storage(tmp_path: Path) -> None
     assert response.json()["storage"] == {
         "ledger": {"state": "ready", "record_count": 1},
         "artifacts": {"state": "ready", "record_count": 1},
+        "memory": {"state": "not_initialized", "record_count": 0},
     }
+
+
+def test_status_reports_a_malformed_memory_database_as_an_error(tmp_path: Path) -> None:
+    data_root = tmp_path / "runtime"
+    data_root.mkdir()
+    (data_root / "memory.sqlite3").write_bytes(b"not a sqlite database")
+
+    response = request_status(data_root)
+
+    assert response.status_code == 200
+    assert response.json()["storage"]["memory"] == {
+        "state": "error",
+        "record_count": 0,
+    }
+    assert response.json()["features"]["memory_lattice"] == "preview"

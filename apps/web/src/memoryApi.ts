@@ -8,6 +8,14 @@ export type MemoryAuthorityState =
   | 'contradicted'
   | 'retracted'
 export type MemorySourceKind = 'native' | 'obsidian'
+export type ArchitectureNodeId =
+  | 'identity-role'
+  | 'goals-commitments'
+  | 'projects-work'
+  | 'knowledge-research'
+  | 'people-relationships'
+  | 'decisions-lessons'
+  | 'preferences-context'
 export type MemoryUnavailableReason =
   | 'vault_not_configured'
   | 'vault_not_found'
@@ -74,6 +82,7 @@ export interface MemoryNodeSummary {
   topics: string[]
   content_hash: string
   wikilink_count: number
+  architecture_node_ids: ArchitectureNodeId[]
 }
 
 export interface MemoryNodeCollection {
@@ -120,12 +129,20 @@ function createEventId(): string {
   return `evt_${suffix}`
 }
 
-export async function loadMemoryProjection(signal?: AbortSignal): Promise<MemoryProjection> {
+async function loadMemoryProjectionSnapshot(signal?: AbortSignal): Promise<MemoryProjection> {
   const [index, collection] = await Promise.all([
     requestJson<MemoryIndexProjection>('/api/v1/memory/index', signal),
     requestJson<MemoryNodeCollection>('/api/v1/memory/nodes', signal),
   ])
   return { index, collection }
+}
+
+export async function loadMemoryProjection(signal?: AbortSignal): Promise<MemoryProjection> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const projection = await loadMemoryProjectionSnapshot(signal)
+    if (projection.index.index_hash === projection.collection.index_hash) return projection
+  }
+  throw new Error('memory projection changed while loading')
 }
 
 export function loadMemoryNode(

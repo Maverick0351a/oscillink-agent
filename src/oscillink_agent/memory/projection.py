@@ -19,6 +19,7 @@ from oscillink_agent.memory.obsidian import (
     ReviewedObsidianIndex,
 )
 from oscillink_agent.memory.repository import (
+    ArchitectureNodeId,
     MemoryAuthorityState,
     MemorySourceKind,
     ProductMemoryRecord,
@@ -113,6 +114,7 @@ class MemoryNodeSummary(ProjectionModel):
     topics: tuple[str, ...]
     content_hash: Digest
     wikilink_count: NonNegativeInt
+    architecture_node_ids: tuple[ArchitectureNodeId, ...] = ()
 
 
 class MemoryNodeDetail(MemoryNodeSummary):
@@ -210,6 +212,7 @@ def _summarize_product(record: ProductMemoryRecord) -> MemoryNodeSummary:
         topics=record.topics,
         content_hash=record.content_hash,
         wikilink_count=len(record.wikilinks),
+        architecture_node_ids=record.architecture_node_ids,
     )
 
 

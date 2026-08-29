@@ -3,16 +3,24 @@ import {
   Box,
   Database,
   MessageSquare,
-  Network,
   Send,
   ShieldCheck,
-  Sparkles,
   Terminal,
+  X,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import AgentAvatar from './AgentAvatar'
+import {
+  createChatSessionId,
+  inspectChatRun,
+  sendChatMessage,
+  type ChatMessageResponse,
+  type ChatRunInspectionResponse,
+} from './chatApi'
 import MemoryWorkspace from './MemoryWorkspace'
+import RunInspector from './RunInspector'
+import WorkspaceTerminal from './WorkspaceTerminal'
 
 interface ComponentStatus {
   state: 'not_initialized' | 'ready' | 'error'
@@ -26,15 +34,17 @@ interface ServiceStatus {
   storage: {
     ledger: ComponentStatus
     artifacts: ComponentStatus
+    memory: ComponentStatus
   }
   features: {
     chat: 'planned' | 'preview' | 'ready'
+    capability_broker: 'planned' | 'preview' | 'ready'
     memory_lattice: 'planned' | 'preview' | 'ready'
     appearance: 'planned' | 'preview' | 'ready'
+    workspace_terminal: 'planned' | 'preview' | 'ready'
   }
 }
 
-type ActiveView = 'chat' | 'memory'
 type ConnectionState = 'connecting' | 'online' | 'offline'
 
 function stateLabel(state: ComponentStatus['state'] | undefined) {
@@ -46,7 +56,15 @@ function stateLabel(state: ComponentStatus['state'] | undefined) {
 export default function App() {
   const [status, setStatus] = useState<ServiceStatus | null>(null)
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting')
-  const [activeView, setActiveView] = useState<ActiveView>('chat')
+  const [terminalOpen, setTerminalOpen] = useState(false)
+  const [activeView, setActiveView] = useState<'agent' | 'memory'>('agent')
+  const [chatMessage, setChatMessage] = useState('')
+  const [chatResponse, setChatResponse] = useState<ChatMessageResponse | null>(null)
+  const [chatError, setChatError] = useState<string | null>(null)
+  const [chatSubmitting, setChatSubmitting] = useState(false)
+  const [runInspection, setRunInspection] = useState<ChatRunInspectionResponse | null>(null)
+  const [runInspecting, setRunInspecting] = useState(false)
+  const [chatSessionId] = useState(createChatSessionId)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -74,6 +92,36 @@ export default function App() {
     connectionState === 'connecting' ? 'CONNECTING' : `API ${connectionState.toUpperCase()}`
   const chatReady = status?.features.chat === 'ready'
 
+  async function submitChatMessage() {
+    const message = chatMessage.trim()
+    if (!chatReady || chatSubmitting || !message) return
+    setChatSubmitting(true)
+    setChatError(null)
+    try {
+      const response = await sendChatMessage(chatSessionId, message)
+      setChatResponse(response)
+      setRunInspection(null)
+      setChatMessage('')
+    } catch {
+      setChatError('The governed chat run could not be completed.')
+    } finally {
+      setChatSubmitting(false)
+    }
+  }
+
+  async function inspectPersistedRun() {
+    if (!chatResponse || runInspecting) return
+    setRunInspecting(true)
+    setChatError(null)
+    try {
+      setRunInspection(await inspectChatRun(chatResponse.session_id, chatResponse.run_id))
+    } catch {
+      setChatError('The persisted run could not be inspected.')
+    } finally {
+      setRunInspecting(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -97,20 +145,21 @@ export default function App() {
           <p className="nav-overline">INTERFACES</p>
           <button
             type="button"
-            aria-pressed={activeView === 'chat'}
-            onClick={() => setActiveView('chat')}
+            aria-pressed={activeView === 'agent'}
+            onClick={() => setActiveView('agent')}
           >
             <MessageSquare size={18} aria-hidden="true" />
-            <span>Chat</span>
+            <span>Agent Workspace</span>
             <i aria-hidden="true">01</i>
           </button>
           <button
             type="button"
+            aria-label="Open Product Memory"
             aria-pressed={activeView === 'memory'}
             onClick={() => setActiveView('memory')}
           >
-            <Network size={18} aria-hidden="true" />
-            <span>Memory Lattice</span>
+            <Database size={18} aria-hidden="true" />
+            <span>Product Memory</span>
             <i aria-hidden="true">02</i>
           </button>
         </nav>
@@ -119,7 +168,10 @@ export default function App() {
           <p className="nav-overline">FOUNDATION</p>
           <div><Database size={15} aria-hidden="true" /> Event ledger</div>
           <div><Box size={15} aria-hidden="true" /> Artifact store</div>
-          <div className="muted"><ShieldCheck size={15} aria-hidden="true" /> Capability broker</div>
+          <div className="muted">
+            <ShieldCheck size={15} aria-hidden="true" />
+            Capability broker {status?.features.capability_broker.toUpperCase() ?? 'PLANNED'}
+          </div>
         </div>
 
         <div className="sidebar-footer">
@@ -135,7 +187,7 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">OSCILLINK // AGENT CONSOLE</p>
-            <p className="view-title">{activeView === 'chat' ? 'Communication Channel' : 'Memory Lattice'}</p>
+            <p className="view-title">{activeView === 'agent' ? 'Agent Workspace' : 'Product Memory'}</p>
           </div>
           <section className="status-cluster" aria-label="System status">
             <span className={`status-pill ${connectionState}`}>{apiLabel}</span>
@@ -149,15 +201,36 @@ export default function App() {
         </header>
 
         <main className="workspace">
-          {activeView === 'chat' ? (
-            <section className="chat-view">
+          {activeView === 'memory' ? (
+            <MemoryWorkspace latticeState={status?.features.memory_lattice ?? 'planned'} />
+          ) : (
+            <div className="unified-agent-workspace">
+            <div className={`chat-operations-column ${terminalOpen ? 'has-terminal' : ''}`}>
+            <section className="chat-view" aria-label="Agent chat">
               <div className="channel-header">
-                <div>
-                  <span className="section-index">01 / CHAT</span>
-                  <h2>Chat</h2>
-                  <p>Governed conversation with cited memory and complete event lineage.</p>
+                <div className="chat-agent-presence">
+                  <AgentAvatar />
+                  <div>
+                    <span className="section-index">OSCILLINK AGENT / CHAT</span>
+                    <h2>Chat</h2>
+                    <p>Governed conversation with cited memory and complete event lineage.</p>
+                  </div>
                 </div>
-                <span className="pending-badge">MODEL RUNTIME PENDING</span>
+                <div className="channel-actions">
+                  <span className="pending-badge">
+                    {chatReady ? 'DETERMINISTIC RUNTIME' : 'MODEL RUNTIME PENDING'}
+                  </span>
+                  <button
+                    type="button"
+                    className="terminal-pane-toggle"
+                    aria-label={terminalOpen ? 'Close terminal pane' : 'Open terminal pane'}
+                    aria-pressed={terminalOpen}
+                    onClick={() => setTerminalOpen((open) => !open)}
+                  >
+                    {terminalOpen ? <X size={15} aria-hidden="true" /> : <Terminal size={15} aria-hidden="true" />}
+                    {terminalOpen ? 'Close terminal' : 'Terminal'}
+                  </button>
+                </div>
               </div>
 
               <div className="conversation-stage">
@@ -167,9 +240,9 @@ export default function App() {
                   <div>
                     <header><strong>OSCILLINK SYSTEM</strong><time>FOUNDATION PHASE</time></header>
                     <p>
-                      Interface link established. Durable storage telemetry is live. Conversation
-                      remains locked until the governed model runtime, cited retrieval, and
-                      capability broker are connected.
+                      {chatReady
+                        ? 'Deterministic local chat is connected. Each run compiles approved product memory into a persisted, revision-bound context manifest.'
+                        : 'Interface link established. Conversation remains locked until the governed model runtime and cited retrieval are connected.'}
                     </p>
                     <div className="readiness-row">
                       <span data-state={status?.storage.ledger.state ?? 'not_initialized'}>
@@ -178,10 +251,43 @@ export default function App() {
                       <span data-state={status?.storage.artifacts.state ?? 'not_initialized'}>
                         Artifacts {stateLabel(status?.storage.artifacts.state)}
                       </span>
-                      <span data-state="not_initialized">Memory STANDBY</span>
+                      <span data-state={status?.storage.memory.state ?? 'not_initialized'}>
+                        Memory {stateLabel(status?.storage.memory.state)}
+                      </span>
                     </div>
                   </div>
                 </article>
+                {chatResponse ? (
+                  <article className="chat-run-message" aria-label="Governed chat response">
+                    <header>
+                      <strong>OSCILLINK AGENT</strong>
+                      <span>{chatResponse.provider.model}</span>
+                    </header>
+                    <p>{chatResponse.answer}</p>
+                    <div className="chat-run-citations">
+                      {chatResponse.citations.map((citation) => (
+                        <span key={`${citation.record_id}:${citation.content_hash}`}>
+                          CITED MEMORY · {citation.title}
+                        </span>
+                      ))}
+                    </div>
+                    <footer>
+                      <span>RUN {chatResponse.run_id.replace('run_', '')}</span>
+                      <span>CONTEXT {chatResponse.context_manifest.id.replace('ctx_', '')}</span>
+                      <span>{chatResponse.context_manifest.total_token_count} TOKENS</span>
+                      <button
+                        type="button"
+                        aria-label="Inspect persisted run"
+                        disabled={runInspecting}
+                        onClick={() => void inspectPersistedRun()}
+                      >
+                        <Activity size={13} aria-hidden="true" />
+                        {runInspecting ? 'LOADING RUN' : 'INSPECT RUN'}
+                      </button>
+                    </footer>
+                  </article>
+                ) : null}
+                {chatError ? <p className="chat-run-error" role="alert">{chatError}</p> : null}
               </div>
 
               <div className="composer-shell">
@@ -189,45 +295,45 @@ export default function App() {
                 <textarea
                   id="chat-message"
                   aria-label="Message Oscillink Agent"
-                  placeholder="Chat unlocks when the governed runtime is connected."
+                  placeholder={chatReady ? 'Ask using approved product memory.' : 'Chat unlocks when the governed runtime is connected.'}
                   disabled={!chatReady}
+                  value={chatMessage}
+                  onChange={(event) => setChatMessage(event.target.value)}
                 />
                 <div className="composer-footer">
                   <span><ShieldCheck size={14} aria-hidden="true" /> Governed channel</span>
-                  <button type="button" aria-label="Send message" disabled={!chatReady}>
+                  <button
+                    type="button"
+                    aria-label="Send message"
+                    disabled={!chatReady || chatSubmitting || !chatMessage.trim()}
+                    onClick={() => void submitChatMessage()}
+                  >
                     <Send size={16} aria-hidden="true" /> Send
                   </button>
                 </div>
               </div>
             </section>
-          ) : (
-            <MemoryWorkspace latticeState={status?.features.memory_lattice ?? 'planned'} />
+            {terminalOpen ? (
+              <section className="chat-terminal-pane" aria-label="Chat terminal pane">
+                <WorkspaceTerminal
+                  terminalState={status?.features.workspace_terminal ?? 'planned'}
+                  embedded
+                />
+              </section>
+            ) : null}
+            </div>
+            <MemoryWorkspace
+              latticeState={status?.features.memory_lattice ?? 'planned'}
+              embeddedArchitecture
+              activeRetrievalRecordIds={chatResponse?.citations.map((citation) => citation.record_id) ?? []}
+            />
+            {runInspection ? (
+              <RunInspector inspection={runInspection} onClose={() => setRunInspection(null)} />
+            ) : null}
+          </div>
           )}
         </main>
       </section>
-
-      <aside className="presence-rail">
-        <div className="presence-header">
-          <span className="section-index">AGENT PRESENCE</span>
-          <span className="preview-chip">PREVIEW</span>
-        </div>
-        <AgentAvatar />
-        <div className="identity-block">
-          <span>OSCILLINK</span>
-          <h2>Foundation Form</h2>
-          <p>Appearance manifest not yet governed. This local SVG is a reversible interface preview.</p>
-        </div>
-        <div className="telemetry-list">
-          <div><span>STATE</span><strong>IDLE</strong></div>
-          <div><span>TRUST MODE</span><strong>GOVERNED</strong></div>
-          <div><span>MEMORY</span><strong>STANDBY</strong></div>
-          <div><span>MODEL</span><strong>DISCONNECTED</strong></div>
-        </div>
-        <div className="appearance-note">
-          <Sparkles size={16} aria-hidden="true" />
-          <p>Future forms will use versioned, human-approved appearance manifests.</p>
-        </div>
-      </aside>
     </div>
   )
 }

@@ -23,6 +23,7 @@ const memoryNodes: MemoryNodeSummary[] = [
     topics: [],
     content_hash: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     wikilink_count: 1,
+    architecture_node_ids: ['projects-work', 'decisions-lessons'],
   },
   {
     id: 'doc_PHBCG4C4DKQWX1903XXPVD7ZB6',
@@ -36,6 +37,7 @@ const memoryNodes: MemoryNodeSummary[] = [
     topics: ['agent architecture'],
     content_hash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     wikilink_count: 1,
+    architecture_node_ids: ['knowledge-research'],
   },
 ]
 
@@ -45,20 +47,41 @@ describe('MemoryGraph', () => {
   it('uses a compact, focused-label policy for narrow reviewed-memory projections', () => {
     expect(projectionDensity('memory', 390)).toBe(0.22)
     expect(projectionDensity('memory', 900)).toBe(0.34)
-    expect(projectionDensity('architecture', 390)).toBe(0.34)
+    expect(projectionDensity('architecture', 500)).toBe(0.28)
+    expect(projectionDensity('architecture', 390)).toBe(0.28)
     expect(shouldDrawNodeLabel('memory', 390, false)).toBe(false)
     expect(shouldDrawNodeLabel('memory', 390, true)).toBe(false)
     expect(shouldDrawNodeLabel('architecture', 390, false)).toBe(true)
   })
 
-  it('exposes the graph renderer and reduced-motion accessibility copy', () => {
-    render(<MemoryGraph latticeState="planned" />)
+  it('lets architecture nodes expose their associated memory containers', () => {
+    const onSelect = vi.fn()
+    render(
+      <MemoryGraph
+        latticeState="ready"
+        nodes={memoryNodes}
+        selectedId="projects-work"
+        activeRetrievalNodeIds={['decisions-lessons']}
+        onSelect={onSelect}
+      />,
+    )
 
-    const canvas = screen.getByRole('img', { name: 'Foundation memory architecture map' })
+    const canvas = screen.getByRole('img', { name: 'System architecture memory map' })
     expect(canvas.tagName).toBe('CANVAS')
     expect(canvas).toHaveAttribute('data-renderer', 'projected-3d-neural')
-    expect(screen.getByText('FOUNDATION MAP · NOT MEMORY DATA')).toBeInTheDocument()
+    expect(screen.getByText('ARCHITECTURE MEMORY · 3 ASSOCIATIONS')).toBeInTheDocument()
     expect(screen.getByText('DRAG TO ORBIT')).toBeInTheDocument()
+
+    const container = screen.getByRole('button', {
+      name: 'Inspect Projects & Work, 1 associated memory record',
+    })
+    expect(container).toHaveAttribute('aria-pressed', 'true')
+    const retrieved = screen.getByRole('button', {
+      name: 'Inspect Decisions & Lessons, 1 associated memory record',
+    })
+    expect(retrieved).toHaveTextContent('Active agent retrieval')
+    fireEvent.click(retrieved)
+    expect(onSelect).toHaveBeenCalledWith('decisions-lessons')
   })
 
   it('renders reviewed records separately and exposes deterministic focused navigation', () => {

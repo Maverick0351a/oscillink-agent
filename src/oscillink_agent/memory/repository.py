@@ -58,6 +58,18 @@ class MemorySourceKind(StrEnum):
     OBSIDIAN = "obsidian"
 
 
+class ArchitectureNodeId(StrEnum):
+    """Stable product architecture containers available for explicit memory association."""
+
+    IDENTITY_ROLE = "identity-role"
+    GOALS_COMMITMENTS = "goals-commitments"
+    PROJECTS_WORK = "projects-work"
+    KNOWLEDGE_RESEARCH = "knowledge-research"
+    PEOPLE_RELATIONSHIPS = "people-relationships"
+    DECISIONS_LESSONS = "decisions-lessons"
+    PREFERENCES_CONTEXT = "preferences-context"
+
+
 class ProductMemoryRecord(FrozenModel):
     """Stable product record; source location is provenance, not identity."""
 
@@ -76,6 +88,7 @@ class ProductMemoryRecord(FrozenModel):
     content_hash: Digest
     wikilinks: tuple[str, ...] = ()
     classification_basis: tuple[str, ...] = ()
+    architecture_node_ids: tuple[ArchitectureNodeId, ...] = ()
 
 
 class SQLiteMemoryRepository:
@@ -154,6 +167,7 @@ class SQLiteMemoryRepository:
         domains: tuple[MemoryDomain, ...],
         topics: tuple[str, ...],
         content_hash: Digest,
+        architecture_node_ids: tuple[ArchitectureNodeId, ...] = (),
     ) -> ProductMemoryRecord:
         record = ProductMemoryRecord(
             id=_new_record_id(),
@@ -169,28 +183,32 @@ class SQLiteMemoryRepository:
             topics=topics,
             content_hash=content_hash,
             classification_basis=("customer:native",),
+            architecture_node_ids=architecture_node_ids,
         )
         self._write_record(record)
         return record
 
     def _write_record(self, record: ProductMemoryRecord) -> None:
-        encoded = record.model_dump_json()
         with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO memory_records (record_id, record_json)
-                VALUES (?, ?)
-                ON CONFLICT(record_id) DO UPDATE SET record_json = excluded.record_json
-                """,
-                (record.id, encoded),
-            )
-            self._connection.execute(
-                """
-                INSERT OR IGNORE INTO memory_record_revisions (record_id, record_json)
-                VALUES (?, ?)
-                """,
-                (record.id, encoded),
-            )
+            self._write_record_locked(record)
+
+    def _write_record_locked(self, record: ProductMemoryRecord) -> None:
+        encoded = record.model_dump_json()
+        self._connection.execute(
+            """
+            INSERT INTO memory_records (record_id, record_json)
+            VALUES (?, ?)
+            ON CONFLICT(record_id) DO UPDATE SET record_json = excluded.record_json
+            """,
+            (record.id, encoded),
+        )
+        self._connection.execute(
+            """
+            INSERT OR IGNORE INTO memory_record_revisions (record_id, record_json)
+            VALUES (?, ?)
+            """,
+            (record.id, encoded),
+        )
 
     def sync_obsidian(
         self,
@@ -202,6 +220,31 @@ class SQLiteMemoryRepository:
         snapshot_hash: str,
     ) -> tuple[ProductMemoryRecord, ...]:
         """Synchronize curated source records without granting approval."""
+
+        try:
+            self._connection.execute("BEGIN IMMEDIATE")
+            synchronized = self._sync_obsidian_locked(
+                source_key=source_key,
+                notes=notes,
+                event_id=event_id,
+                idempotency_key=idempotency_key,
+                snapshot_hash=snapshot_hash,
+            )
+        except Exception:
+            self._connection.rollback()
+            raise
+        self._connection.commit()
+        return synchronized
+
+    def _sync_obsidian_locked(
+        self,
+        *,
+        source_key: str,
+        notes: tuple[IndexedObsidianNote, ...],
+        event_id: str,
+        idempotency_key: str,
+        snapshot_hash: str,
+    ) -> tuple[ProductMemoryRecord, ...]:
 
         if _IDEMPOTENCY_KEY.fullmatch(idempotency_key) is None:
             raise ValueError("invalid source-sync idempotency key")
@@ -272,37 +315,55 @@ class SQLiteMemoryRepository:
                 wikilinks=note.wikilinks,
                 classification_basis=note.classification_basis,
             )
-            self._write_record(record)
-            with self._connection:
-                if previous_locator is not None:
-                    self._connection.execute(
-                        """
-                        DELETE FROM memory_source_bindings
-                        WHERE source_key = ? AND source_locator = ?
-                        """,
-                        (source_key, previous_locator),
-                    )
+            self._write_record_locked(record)
+            if previous_locator is not None:
                 self._connection.execute(
                     """
-                    INSERT INTO memory_source_bindings (
-                        source_key, source_locator, content_hash, record_id
-                    ) VALUES (?, ?, ?, ?)
-                    ON CONFLICT(source_key, source_locator) DO UPDATE SET
-                        content_hash = excluded.content_hash,
-                        record_id = excluded.record_id
+                    DELETE FROM memory_source_bindings
+                    WHERE source_key = ? AND source_locator = ?
                     """,
-                    (source_key, note.source_path, note.content_hash, record_id),
+                    (source_key, previous_locator),
                 )
-            synchronized.append(self.get(record_id) or record)
-        with self._connection:
             self._connection.execute(
                 """
-                INSERT INTO memory_source_syncs (
-                    event_id, idempotency_key, source_key, snapshot_hash
+                INSERT INTO memory_source_bindings (
+                    source_key, source_locator, content_hash, record_id
                 ) VALUES (?, ?, ?, ?)
+                ON CONFLICT(source_key, source_locator) DO UPDATE SET
+                    content_hash = excluded.content_hash,
+                    record_id = excluded.record_id
                 """,
-                (event_id, idempotency_key, source_key, snapshot_hash),
+                (source_key, note.source_path, note.content_hash, record_id),
             )
+            synchronized.append(self.get(record_id) or record)
+        missing_bindings = self._connection.execute(
+            """
+            SELECT source_locator, record_id
+            FROM memory_source_bindings
+            WHERE source_key = ?
+            """,
+            (source_key,),
+        ).fetchall()
+        for source_locator, record_id in missing_bindings:
+            if source_locator in current_locators:
+                continue
+            encoded_row = self._connection.execute(
+                "SELECT record_json FROM memory_records WHERE record_id = ?",
+                (record_id,),
+            ).fetchone()
+            if encoded_row is None:
+                continue
+            stored = ProductMemoryRecord.model_validate_json(encoded_row[0])
+            if stored.source_status != "missing":
+                self._write_record_locked(stored.model_copy(update={"source_status": "missing"}))
+        self._connection.execute(
+            """
+            INSERT INTO memory_source_syncs (
+                event_id, idempotency_key, source_key, snapshot_hash
+            ) VALUES (?, ?, ?, ?)
+            """,
+            (event_id, idempotency_key, source_key, snapshot_hash),
+        )
         return tuple(synchronized)
 
     def list(self) -> tuple[ProductMemoryRecord, ...]:

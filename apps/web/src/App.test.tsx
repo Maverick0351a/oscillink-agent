@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -10,11 +10,14 @@ const statusResponse = {
   storage: {
     ledger: { state: 'ready', record_count: 12 },
     artifacts: { state: 'ready', record_count: 4 },
+    memory: { state: 'ready', record_count: 1 },
   },
   features: {
-    chat: 'planned',
-    memory_lattice: 'planned',
+    chat: 'ready',
+    capability_broker: 'preview',
+    memory_lattice: 'ready',
     appearance: 'preview',
+    workspace_terminal: 'preview',
   },
 }
 
@@ -30,6 +33,7 @@ const memoryNode = {
   topics: [],
   content_hash: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
   wikilink_count: 0,
+  architecture_node_ids: ['projects-work'],
 }
 
 function appFetch(input: RequestInfo | URL) {
@@ -68,6 +72,94 @@ function appFetch(input: RequestInfo | URL) {
         classification_basis: ['frontmatter:type=project'],
       },
     }
+  } else if (path.includes('/chat/sessions/')) {
+    payload = {
+      schema_version: 1,
+      session_id: 'ses_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      run_id: 'run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      events: [
+        {
+          id: 'evt_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+          event_type: 'message',
+          observed_at: '2026-08-29T00:00:00Z',
+          actor: { id: 'human_local-user', type: 'human' },
+          artifact_refs: [],
+          causal_parent_ids: [],
+          payload: { message: 'What should this agent remember?' },
+        },
+        {
+          id: 'evt_01ARZ3NDEKTSV4RRFFQ69G5FC2',
+          event_type: 'model_call',
+          observed_at: '2026-08-29T00:00:01Z',
+          actor: { id: 'system_chat-runtime', type: 'system' },
+          artifact_refs: ['sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'],
+          causal_parent_ids: ['evt_01ARZ3NDEKTSV4RRFFQ69G5FC1'],
+          payload: { provider_model: 'deterministic-v1' },
+        },
+        {
+          id: 'evt_01ARZ3NDEKTSV4RRFFQ69G5FC3',
+          event_type: 'message',
+          observed_at: '2026-08-29T00:00:02Z',
+          actor: { id: 'model_deterministic-v1', type: 'model' },
+          artifact_refs: [],
+          causal_parent_ids: ['evt_01ARZ3NDEKTSV4RRFFQ69G5FC2'],
+          payload: { answer: 'Grounded in approved memory: Oscillink Agent.' },
+        },
+      ],
+      context_manifest: {
+        id: 'ctx_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        schema_version: 1,
+        task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        compiled_at: '2026-08-29T00:00:01Z',
+        token_budget: 2048,
+        total_token_count: 8,
+        policy_hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        items: [{
+          record_id: memoryNode.id,
+          content_hash: memoryNode.content_hash,
+          title: memoryNode.title,
+          category: 'project',
+          domains: ['ai_ml'],
+          status: 'approved',
+          inclusion_reason: 'lexical_match rank=1 score=4',
+          token_count: 8,
+          source_refs: [],
+          retrieval_rank: 1,
+          retrieval_score: 4,
+        }],
+        omissions: [],
+        exclusion_summary: {
+          not_approved_count: 0,
+          missing_source_count: 0,
+          superseded_count: 0,
+          conflict_count: 0,
+        },
+      },
+    }
+  } else if (path.endsWith('/chat/messages')) {
+    payload = {
+      schema_version: 1,
+      session_id: 'ses_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      run_id: 'run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      provider: { kind: 'fake', model: 'deterministic-v1' },
+      answer: 'Grounded in approved memory: Oscillink Agent.',
+      citations: [{
+        record_id: memoryNode.id,
+        content_hash: memoryNode.content_hash,
+        title: memoryNode.title,
+      }],
+      context_manifest: {
+        id: 'ctx_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        schema_version: 1,
+        task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        compiled_at: '2026-08-29T00:00:00Z',
+        token_budget: 2048,
+        total_token_count: 8,
+        policy_hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+        items: [],
+      },
+    }
   }
   return Promise.resolve(
     new Response(JSON.stringify(payload), {
@@ -84,15 +176,7 @@ afterEach(() => {
 
 describe('Oscillink Agent shell', () => {
   it('renders live backend and storage status', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(statusResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(appFetch))
 
     render(<App />)
 
@@ -104,45 +188,92 @@ describe('Oscillink Agent shell', () => {
     expect(await screen.findByText('API ONLINE')).toBeInTheDocument()
     expect(screen.getByText('12 events')).toBeInTheDocument()
     expect(screen.getByText('4 artifacts')).toBeInTheDocument()
+    expect(screen.getByText('Memory READY')).toBeInTheDocument()
   })
 
-  it('opens the real reviewed-memory projection and preserves the architecture view', async () => {
+  it('keeps chat, architecture memory, and node details in one workspace', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(appFetch))
     render(<App />)
     await screen.findByText('API ONLINE')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Memory Lattice' }))
+    expect(screen.getByRole('region', { name: 'Agent chat' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'System Architecture' })).toBeInTheDocument()
+    expect(await screen.findByRole('img', { name: 'System architecture memory map' })).toBeInTheDocument()
+    expect(screen.getByText('ARCHITECTURE MEMORY · 1 ASSOCIATION')).toBeInTheDocument()
+    expect(screen.getByText('NO ACTIVE RETRIEVAL')).toBeInTheDocument()
 
-    expect(screen.getByRole('heading', { name: 'Memory Lattice' })).toBeInTheDocument()
-    expect(await screen.findByText('READY · 1 MEMORY RECORDS')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Product memory lattice' })).toBeInTheDocument()
-    expect(
-      await screen.findByRole('heading', { name: 'Oscillink Agent', level: 3 }),
-    ).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'System Architecture' }))
-    expect(screen.getByText('FOUNDATION MAP · NOT MEMORY DATA')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', {
+      name: 'Inspect Projects & Work, 1 associated memory record',
+    }))
+    const inspector = screen.getByRole('complementary', { name: 'Architecture memory inspector' })
+    expect(within(inspector).getByRole('heading', { name: 'Projects & Work' })).toBeInTheDocument()
+    expect(within(inspector).getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
   })
 
-  it('shows the foundation agent while keeping unavailable chat disabled', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(statusResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-    )
+  it('opens the governed Product Memory workspace from the integrated app', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(appFetch))
     render(<App />)
     await screen.findByText('API ONLINE')
 
+    fireEvent.click(screen.getByRole('button', { name: 'Open Product Memory' }))
+
+    expect(await screen.findByRole('region', { name: 'Memory workspace controls' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Product Memory' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(await screen.findByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+  })
+
+  it('runs governed chat and renders cited memory with inspectable run metadata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(appFetch))
+    render(<App />)
+    await screen.findByText('API ONLINE')
+
+    const presence = screen.getByRole('region', { name: 'Agent chat' })
     expect(
-      screen.getByRole('img', { name: 'Oscillink Agent avatar, foundation idle' }),
+      within(presence).getByRole('img', { name: 'Oscillink Agent avatar, foundation idle' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('MODEL RUNTIME PENDING')).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Message Oscillink Agent' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled()
+    expect(screen.getByText('DETERMINISTIC RUNTIME')).toBeInTheDocument()
+    const composer = screen.getByRole('textbox', { name: 'Message Oscillink Agent' })
+    fireEvent.change(composer, { target: { value: 'What should this agent remember?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+
+    expect(await screen.findByText('Grounded in approved memory: Oscillink Agent.')).toBeInTheDocument()
+    expect(screen.getByText('CITED MEMORY · Oscillink Agent')).toBeInTheDocument()
+    expect(screen.getByText('RUN 01ARZ3NDEKTSV4RRFFQ69G5FC1')).toBeInTheDocument()
+    expect(screen.getByText('CONTEXT 01ARZ3NDEKTSV4RRFFQ69G5FC1')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect persisted run' }))
+    const runInspector = await screen.findByRole('complementary', { name: 'Run inspector' })
+    expect(within(runInspector).getByText('3 PERSISTED EVENTS')).toBeInTheDocument()
+    expect(within(runInspector).getByText('MODEL CALL')).toBeInTheDocument()
+    expect(within(runInspector).getByText('Oscillink Agent')).toBeInTheDocument()
+    expect(within(runInspector).getByText('RANK 1 · SCORE 4')).toBeInTheDocument()
+    expect(within(runInspector).getByText('0 UNAPPROVED EXCLUDED')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/chat/sessions/ses_01ARZ3NDEKTSV4RRFFQ69G5FC1/runs/run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+    )
+  })
+
+  it('opens a truthful governed terminal pane inside chat without execution authority', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(appFetch))
+    render(<App />)
+    await screen.findByText('API ONLINE')
+
+    expect(screen.queryByRole('button', { name: 'Workspace Terminal' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Workspace Terminal' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open terminal pane' }))
+
+    expect(screen.getByRole('heading', { name: 'Workspace Terminal' })).toBeInTheDocument()
+    expect(screen.getByText('PREVIEW · EXECUTION LOCKED')).toBeInTheDocument()
+    expect(screen.getByText('No process created')).toBeInTheDocument()
+    expect(screen.getByText('Sandbox policy pending')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Workspace command' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Run command' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close terminal pane' }))
+    expect(screen.queryByRole('heading', { name: 'Workspace Terminal' })).not.toBeInTheDocument()
   })
 
   it('reports an offline API instead of remaining in a connecting state', async () => {

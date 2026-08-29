@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
-from oscillink_agent.domain.events import Event, SessionId
+from oscillink_agent.domain.events import Event, EventId, SessionId
 from oscillink_agent.storage.interfaces import ArtifactStore, ArtifactStoreError
 
 _MIGRATION = Path(__file__).with_name("migrations") / "001_events.sql"
@@ -167,6 +167,37 @@ class SQLiteEventStore:
             if event.payload_hash != expected_payload_hash:
                 raise LedgerCorruptionError(f"payload hash changed after append: {event_id}")
             yield event
+
+    def get(self, event_id: EventId) -> Event | None:
+        """Resolve one immutable event by its product-owned identity."""
+
+        row = self._connection.execute(
+            """
+            SELECT event_id, event_json, event_sha256, payload_hash
+            FROM events
+            WHERE event_id = ?
+            """,
+            (event_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        persisted_id, encoded, expected_digest, expected_payload_hash = row
+        actual_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        if actual_digest != expected_digest:
+            raise LedgerCorruptionError(
+                f"event bytes changed after append: {persisted_id}"
+            )
+        try:
+            event = Event.model_validate_json(encoded)
+        except (TypeError, ValueError) as exc:
+            raise LedgerCorruptionError(
+                f"persisted event is malformed: {persisted_id}"
+            ) from exc
+        if event.payload_hash != expected_payload_hash:
+            raise LedgerCorruptionError(
+                f"payload hash changed after append: {persisted_id}"
+            )
+        return event
 
     def get_by_idempotency(self, idempotency_key: str) -> Event | None:
         if type(idempotency_key) is not str or _IDEMPOTENCY_KEY.fullmatch(

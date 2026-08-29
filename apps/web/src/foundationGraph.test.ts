@@ -11,7 +11,7 @@ describe('foundation graph', () => {
     expect(graph.nodes.every((node) => node.kind === 'system_component')).toBe(true)
     expect(graph.nodes.every((node) => node.position.length === 3)).toBe(true)
     expect(new Set(graph.nodes.map((node) => node.position[2])).size).toBeGreaterThan(3)
-    expect(graph.nodes.find((node) => node.id === 'memory-lattice')?.state).toBe('planned')
+    expect(graph.nodes.find((node) => node.id === 'knowledge-research')?.state).toBe('planned')
     expect(graph.connections.every((connection) => connection.curvature > 0)).toBe(true)
   })
 })

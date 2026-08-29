@@ -6,9 +6,11 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
 
 from oscillink_agent.api import create_app
+from oscillink_agent.memory.repository import ProductMemoryRecord, SQLiteMemoryRepository
 
 
 def request(
@@ -75,6 +77,55 @@ def test_native_candidate_survives_restart_without_obsidian(tmp_path: Path) -> N
     assert index.json()["node_count"] == 1
     service_status = request(restarted_app, "GET", "/api/v1/status")
     assert service_status.json()["features"]["memory_lattice"] == "ready"
+
+
+def test_native_memory_persists_explicit_architecture_associations(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    app = create_app(data_root=data_root, vault_root=None)
+
+    created = request(
+        app,
+        "POST",
+        "/api/v1/memory/nodes",
+        json={
+            "schema_version": 1,
+            "title": "Architecture-bound memory",
+            "content": "This record belongs to governed memory and provenance containers.",
+            "category": "governance",
+            "domains": ["software"],
+            "topics": ["architecture association"],
+            "architecture_node_ids": ["projects-work", "decisions-lessons"],
+        },
+    )
+
+    assert created.status_code == 201, created.text
+    node = created.json()["node"]
+    assert node["architecture_node_ids"] == ["projects-work", "decisions-lessons"]
+
+    restarted = create_app(data_root=data_root, vault_root=None)
+    recovered = request(restarted, "GET", f"/api/v1/memory/nodes/{node['id']}")
+    assert recovered.status_code == 200
+    assert recovered.json()["node"]["architecture_node_ids"] == [
+        "projects-work",
+        "decisions-lessons",
+    ]
+
+    invalid = request(
+        restarted,
+        "POST",
+        "/api/v1/memory/nodes",
+        json={
+            "schema_version": 1,
+            "title": "Invalid architecture association",
+            "content": "Unknown containers must fail closed.",
+            "category": "governance",
+            "domains": ["software"],
+            "architecture_node_ids": ["invented-component"],
+        },
+    )
+    assert invalid.status_code == 422
 
 
 def test_missing_product_record_read_does_not_initialize_storage(tmp_path: Path) -> None:
@@ -375,3 +426,115 @@ The source path is provenance, not product identity.
         assert connection.execute(
             "SELECT COUNT(*) FROM memory_record_revisions"
         ).fetchone() == (3,)
+
+
+def test_obsidian_sync_rolls_back_every_record_when_one_record_write_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_root = tmp_path / "runtime"
+    vault = tmp_path / "vault"
+    for name in ("Alpha", "Beta"):
+        write_note(
+            vault,
+            f"Notes/{name}.md",
+            f"""---
+type: note
+status: active
+domains: [software]
+---
+# {name}
+
+Atomic source synchronization fixture.
+""",
+        )
+    original_write = SQLiteMemoryRepository._write_record_locked
+    write_count = 0
+
+    def fail_second_write(
+        repository: SQLiteMemoryRepository,
+        record: ProductMemoryRecord,
+    ) -> None:
+        nonlocal write_count
+        write_count += 1
+        if write_count == 2:
+            raise RuntimeError("injected source synchronization failure")
+        original_write(repository, record)
+
+    monkeypatch.setattr(SQLiteMemoryRepository, "_write_record_locked", fail_second_write)
+    app = create_app(data_root=data_root, vault_root=vault)
+
+    with pytest.raises(RuntimeError, match="injected source synchronization failure"):
+        request(
+            app,
+            "POST",
+            "/api/v1/memory/sources/obsidian/sync",
+            headers={"Idempotency-Key": "sync-atomic-failure"},
+            json={
+                "schema_version": 1,
+                "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB6",
+            },
+        )
+
+    with sqlite3.connect(data_root / "memory.sqlite3") as connection:
+        assert connection.execute("SELECT COUNT(*) FROM memory_records").fetchone() == (0,)
+        assert connection.execute(
+            "SELECT COUNT(*) FROM memory_record_revisions"
+        ).fetchone() == (0,)
+        assert connection.execute(
+            "SELECT COUNT(*) FROM memory_source_bindings"
+        ).fetchone() == (0,)
+        assert connection.execute("SELECT COUNT(*) FROM memory_source_syncs").fetchone() == (0,)
+
+
+def test_obsidian_sync_marks_records_missing_when_the_source_disappears(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    vault = tmp_path / "vault"
+    source_path = vault / "Notes/Continuity.md"
+    write_note(
+        vault,
+        "Notes/Continuity.md",
+        """---
+type: note
+status: active
+domains: [software]
+---
+# Continuity
+
+Source absence must be visible without deleting product history.
+""",
+    )
+    app = create_app(data_root=data_root, vault_root=vault)
+    first = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "sync-source-present"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB7",
+        },
+    )
+    assert first.status_code == 200
+    present = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
+    source_path.unlink()
+
+    removed = request(
+        app,
+        "POST",
+        "/api/v1/memory/sources/obsidian/sync",
+        headers={"Idempotency-Key": "sync-source-missing"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01ARZ3NDEKTSV4RRFFQ69G5FB8",
+        },
+    )
+
+    assert removed.status_code == 200
+    missing = request(app, "GET", "/api/v1/memory/nodes").json()["nodes"][0]
+    assert missing["id"] == present["id"]
+    assert missing["content_hash"] == present["content_hash"]
+    assert missing["source_path"] == "Notes/Continuity.md"
+    assert missing["source_status"] == "missing"

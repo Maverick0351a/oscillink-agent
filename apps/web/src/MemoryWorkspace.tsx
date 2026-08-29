@@ -1,7 +1,7 @@
-import { Network, Search } from 'lucide-react'
+import { Network, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
-import type { FeatureState } from './foundationGraph'
+import { buildFoundationGraph, type FeatureState } from './foundationGraph'
 import MemoryGraph from './MemoryGraph'
 import MemoryInspector from './MemoryInspector'
 import {
@@ -11,18 +11,121 @@ import {
   type MemoryCategory,
   type MemoryDomain,
   type MemoryNodeDetail,
+  type MemoryNodeSummary,
   type MemoryProjection,
+  type ArchitectureNodeId,
 } from './memoryApi'
 
 interface MemoryWorkspaceProps {
   latticeState: FeatureState
+  embeddedArchitecture?: boolean
+  activeRetrievalRecordIds?: string[]
+}
+
+interface ArchitectureMemoryPanelProps {
+  latticeState: FeatureState
+  nodes: MemoryNodeSummary[]
+  categories: MemoryProjection['index']['categories']
+  domains: MemoryProjection['index']['domains']
+  embedded?: boolean
+  activeRetrievalNodeIds: ArchitectureNodeId[]
+}
+
+function ArchitectureMemoryPanel({
+  latticeState,
+  nodes,
+  categories,
+  domains,
+  embedded = false,
+  activeRetrievalNodeIds,
+}: ArchitectureMemoryPanelProps) {
+  const architecture = useMemo(() => buildFoundationGraph(latticeState), [latticeState])
+  const [selectedArchitectureId, setSelectedArchitectureId] = useState<ArchitectureNodeId | null>(null)
+  const selectedArchitecture = architecture.nodes.find((node) => node.id === selectedArchitectureId)
+  const associatedNodes = selectedArchitectureId === null
+    ? []
+    : nodes.filter((node) => node.architecture_node_ids.includes(selectedArchitectureId))
+  const categoryLabels = new Map(categories.map((entry) => [entry.category, entry.label] as const))
+  const domainLabels = new Map(domains.map((entry) => [entry.domain, entry.label] as const))
+  const recordLabel = `${associatedNodes.length} associated ${associatedNodes.length === 1 ? 'record' : 'records'}`
+
+  return (
+    <section className={`architecture-memory-panel ${embedded ? 'is-embedded' : ''}`} aria-label="System architecture memory">
+      {embedded ? (
+        <header className="architecture-memory-header">
+          <div>
+            <span className="section-index">MEMORY ARCHITECTURE</span>
+            <h2>System Architecture</h2>
+          </div>
+          <span className={`retrieval-state ${activeRetrievalNodeIds.length > 0 ? 'active' : ''}`}>
+            {activeRetrievalNodeIds.length > 0 ? `${activeRetrievalNodeIds.length} RETRIEVAL ACTIVE` : 'NO ACTIVE RETRIEVAL'}
+          </span>
+        </header>
+      ) : null}
+      <div className="memory-layout architecture-layout">
+        <section className="lattice-panel" aria-label="Architecture visualization">
+          <div className="graph-toolbar">
+            <span><Network size={14} aria-hidden="true" /> MEMORY CONTAINERS</span>
+            <span>Selected cyan · agent retrieval orange</span>
+          </div>
+          <MemoryGraph
+            latticeState={latticeState}
+            nodes={nodes}
+            selectedId={selectedArchitectureId}
+            activeRetrievalNodeIds={activeRetrievalNodeIds}
+            onSelect={(id) => setSelectedArchitectureId(id as ArchitectureNodeId)}
+          />
+        </section>
+        {selectedArchitecture !== undefined ? (
+        <aside className="node-inspector architecture-memory-inspector" aria-label="Architecture memory inspector">
+          <span className="section-index">NODE MEMORY</span>
+          <button
+            type="button"
+            className="architecture-inspector-close"
+            aria-label="Close memory details"
+            onClick={() => setSelectedArchitectureId(null)}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+          <header>
+            <h3>{selectedArchitecture.label}</h3>
+            <p>{selectedArchitecture.detail}</p>
+            <strong>{recordLabel}</strong>
+          </header>
+          <div className="architecture-memory-records">
+            {associatedNodes.length === 0 ? (
+              <p className="architecture-memory-empty">No memory is explicitly associated with this container.</p>
+            ) : associatedNodes.map((node) => (
+              <article key={node.id}>
+                <div>
+                  <span>{categoryLabels.get(node.category) ?? node.category}</span>
+                  <i className={`authority-dot ${node.authority_state}`}>{node.authority_state.toUpperCase()}</i>
+                </div>
+                <h4>{node.title}</h4>
+                <p>{node.domains.map((domain) => domainLabels.get(domain) ?? domain).join(' · ')}</p>
+                <small>{node.source_kind === 'obsidian' ? node.source_path : 'Native Oscillink memory'}</small>
+              </article>
+            ))}
+          </div>
+          <footer>
+            Associations belong to immutable memory revisions. Selection does not change authority.
+          </footer>
+        </aside>
+        ) : null}
+      </div>
+    </section>
+  )
 }
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
 
-export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) {
+export default function MemoryWorkspace({
+  latticeState,
+  embeddedArchitecture = false,
+  activeRetrievalRecordIds = [],
+}: MemoryWorkspaceProps) {
   const [activeProjection, setActiveProjection] = useState<'memory' | 'architecture'>('memory')
   const [projection, setProjection] = useState<MemoryProjection | null>(null)
   const [projectionError, setProjectionError] = useState<string | null>(null)
@@ -92,8 +195,22 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
           ? 'MEMORY UNAVAILABLE'
           : 'INDEX CONNECTING'
   const nodes = projection?.collection.nodes ?? []
+  const activeRetrievalRecords = new Set(activeRetrievalRecordIds)
+  const activeRetrievalNodeIds = Array.from(new Set(
+    nodes
+      .filter((node) => activeRetrievalRecords.has(node.id))
+      .flatMap((node) => node.architecture_node_ids),
+  ))
   const categories = projection?.index.categories ?? []
   const domains = projection?.index.domains ?? []
+  const availableCategories = useMemo(() => {
+    const present = new Set(nodes.map((node) => node.category))
+    return categories.filter((entry) => present.has(entry.category))
+  }, [categories, nodes])
+  const availableDomains = useMemo(() => {
+    const present = new Set(nodes.flatMap((node) => node.domains))
+    return domains.filter((entry) => present.has(entry.domain))
+  }, [domains, nodes])
   const visibleNodes = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase()
     const categoryLabels = new Map(categories.map((entry) => [entry.category, entry.label] as const))
@@ -158,9 +275,22 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
     }
   }
 
+  if (embeddedArchitecture) {
+    return (
+      <ArchitectureMemoryPanel
+        latticeState={latticeState}
+        nodes={nodes}
+        categories={categories}
+        domains={domains}
+        embedded
+        activeRetrievalNodeIds={activeRetrievalNodeIds}
+      />
+    )
+  }
+
   return (
     <section className="memory-view">
-      <div className="channel-header">
+      <div className="channel-header memory-channel-header">
         <div>
           <span className="section-index">02 / MEMORY</span>
           <h2>Memory Lattice</h2>
@@ -173,22 +303,78 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
         <div className="memory-notice error" role="alert">{projectionError}</div>
       ) : null}
 
-      <div className="memory-projection-tabs" aria-label="Memory projection view">
-        <button
-          type="button"
-          aria-pressed={activeProjection === 'memory'}
-          onClick={() => setActiveProjection('memory')}
-        >
-          Product Memory
-        </button>
-        <button
-          type="button"
-          aria-pressed={activeProjection === 'architecture'}
-          onClick={() => setActiveProjection('architecture')}
-        >
-          System Architecture
-        </button>
-      </div>
+      <section className="memory-command-deck" aria-label="Memory workspace controls">
+        <div className="memory-projection-tabs" aria-label="Memory projection view">
+          <button
+            type="button"
+            aria-pressed={activeProjection === 'memory'}
+            onClick={() => setActiveProjection('memory')}
+          >
+            Product Memory
+          </button>
+          <button
+            type="button"
+            aria-pressed={activeProjection === 'architecture'}
+            onClick={() => setActiveProjection('architecture')}
+          >
+            System Architecture
+          </button>
+        </div>
+
+        {activeProjection === 'memory' && nodes.length > 0 ? (
+          <div className="memory-controls" aria-label="Memory navigation controls">
+            <label className="memory-search">
+              <span className="sr-only">Search product memory</span>
+              <Search size={14} aria-hidden="true" />
+              <input
+                type="search"
+                aria-label="Search product memory"
+                placeholder="Search title, source, topic…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <label>
+              <span className="sr-only">Filter by category</span>
+              <select
+                aria-label="Filter by category"
+                value={categoryFilter}
+                onChange={(event) => setCategoryFilter(event.target.value as MemoryCategory | '')}
+              >
+                <option value="">All categories</option>
+                {availableCategories.map((entry) => (
+                  <option key={entry.category} value={entry.category}>{entry.symbol} · {entry.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="sr-only">Filter by domain</span>
+              <select
+                aria-label="Filter by domain"
+                value={domainFilter}
+                onChange={(event) => setDomainFilter(event.target.value as MemoryDomain | '')}
+              >
+                <option value="">All domains</option>
+                {availableDomains.map((entry) => (
+                  <option key={entry.domain} value={entry.domain}>{entry.label}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="reset-filters"
+              disabled={!filtersActive}
+              onClick={() => {
+                setQuery('')
+                setCategoryFilter('')
+                setDomainFilter('')
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        ) : null}
+      </section>
 
       {unavailableMessage !== null && activeProjection === 'memory' ? (
         <div className="memory-notice unavailable" role="status">{unavailableMessage}</div>
@@ -201,125 +387,66 @@ export default function MemoryWorkspace({ latticeState }: MemoryWorkspaceProps) 
       ) : null}
 
       {activeProjection === 'memory' ? (
-        <>
-      <div className="memory-controls" aria-label="Memory navigation controls">
-        <label className="memory-search">
-          <span className="sr-only">Search product memory</span>
-          <Search size={14} aria-hidden="true" />
-          <input
-            type="search"
-            aria-label="Search product memory"
-            placeholder="Search title, source, topic…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <label>
-          <span className="sr-only">Filter by category</span>
-          <select
-            aria-label="Filter by category"
-            value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value as MemoryCategory | '')}
-          >
-            <option value="">All categories</option>
-            {categories.map((entry) => (
-              <option key={entry.category} value={entry.category}>{entry.symbol} · {entry.label}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Filter by domain</span>
-          <select
-            aria-label="Filter by domain"
-            value={domainFilter}
-            onChange={(event) => setDomainFilter(event.target.value as MemoryDomain | '')}
-          >
-            <option value="">All domains</option>
-            {domains.map((entry) => (
-              <option key={entry.domain} value={entry.domain}>{entry.label}</option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className="reset-filters"
-          disabled={!filtersActive}
-          onClick={() => {
-            setQuery('')
-            setCategoryFilter('')
-            setDomainFilter('')
-          }}
-        >
-          Reset
-        </button>
-      </div>
-
-      <ul className="memory-category-legend" aria-label="Memory category legend">
-        {categories.map((entry) => (
-          <li
-            key={entry.category}
-            style={{ '--category-color': entry.color } as CSSProperties}
-          >
-            <span aria-hidden="true">{entry.symbol}</span>
-            <i>{entry.label}</i>
-          </li>
-        ))}
-      </ul>
-
-      <div className="memory-layout">
-        <div className="lattice-panel">
-          <div className="graph-toolbar">
-            <span><Network size={14} aria-hidden="true" /> PRODUCT MEMORY</span>
-            <span>{`Exact links only · ${visibleNodes.length} of ${nodes.length} memory records`}</span>
-          </div>
-          <div className="memory-graph-stage">
-            <MemoryGraph
-              mode="memory"
-              latticeState={latticeState}
-              nodes={visibleNodes}
-              categories={categories}
-              selectedId={selectedId}
-              selectedLinks={detail?.wikilinks ?? []}
-              onSelect={setSelectedId}
-            />
-            {projection !== null && state !== 'unavailable' && visibleNodes.length === 0 ? (
-              <div className="memory-graph-empty" role="status">
-                No memory records match the current filters.
+        <div className="memory-layout">
+          <section className="lattice-panel" aria-label="Memory visualization">
+            <div className="memory-graph-header">
+              <div className="graph-toolbar">
+                <span><Network size={14} aria-hidden="true" /> PRODUCT MEMORY</span>
+                <span>{`Exact links only · ${visibleNodes.length} of ${nodes.length} memory records`}</span>
               </div>
-            ) : null}
-          </div>
+              {nodes.length > 0 ? (
+                <ul className="memory-category-legend" aria-label="Memory category legend">
+                  {availableCategories.map((entry) => (
+                    <li
+                      key={entry.category}
+                      style={{ '--category-color': entry.color } as CSSProperties}
+                    >
+                      <span aria-hidden="true">{entry.symbol}</span>
+                      <i>{entry.label}</i>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            <div className="memory-graph-stage">
+              <MemoryGraph
+                mode="memory"
+                latticeState={latticeState}
+                nodes={visibleNodes}
+                categories={categories}
+                selectedId={selectedId}
+                selectedLinks={detail?.wikilinks ?? []}
+                onSelect={setSelectedId}
+              />
+              {projection !== null && visibleNodes.length === 0 ? (
+                <div className="memory-graph-empty" role="status">
+                  {state === 'unavailable'
+                    ? 'Create or synchronize memory to populate this lattice.'
+                    : 'No memory records match the current filters.'}
+                </div>
+              ) : null}
+            </div>
+          </section>
+          <MemoryInspector
+            node={detail}
+            categories={categories}
+            domains={domains}
+            loading={detailLoading}
+            error={detailError}
+            reviewing={reviewing}
+            reviewError={reviewError}
+            unavailable={state === 'unavailable'}
+            onReview={handleReview}
+          />
         </div>
-        <MemoryInspector
-          node={detail}
+      ) : (
+        <ArchitectureMemoryPanel
+          latticeState={latticeState}
+          nodes={nodes}
           categories={categories}
           domains={domains}
-          loading={detailLoading}
-          error={detailError}
-          reviewing={reviewing}
-          reviewError={reviewError}
-          onReview={handleReview}
+          activeRetrievalNodeIds={activeRetrievalNodeIds}
         />
-      </div>
-        </>
-      ) : (
-        <div className="memory-layout architecture-layout">
-          <div className="lattice-panel">
-            <div className="graph-toolbar">
-              <span><Network size={14} aria-hidden="true" /> SYSTEM ARCHITECTURE</span>
-              <span>Foundation components · separate from canonical memory</span>
-            </div>
-            <MemoryGraph latticeState={latticeState} />
-          </div>
-          <aside className="node-inspector architecture-inspector" aria-label="Architecture view notes">
-            <span className="section-index">VIEW CONTRACT</span>
-            <div className="inspector-empty"><Network size={24} aria-hidden="true" /></div>
-            <h3>System Architecture</h3>
-            <p>
-              This scaffold describes planned and connected system components. It is not reviewed
-              memory data and does not create canonical relationships.
-            </p>
-          </aside>
-        </div>
       )}
     </section>
   )

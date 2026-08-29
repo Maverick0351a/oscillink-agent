@@ -116,6 +116,7 @@ def test_node_collection_filters_by_category_and_domain(tmp_path: Path) -> None:
             "topics": ["field inference", "calibration"],
             "content_hash": payload["nodes"][0]["content_hash"],
             "wikilink_count": 0,
+            "architecture_node_ids": [],
         }
     ]
     assert payload["nodes"][0]["id"].startswith("doc_")

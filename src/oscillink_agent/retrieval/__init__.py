@@ -1,0 +1,1 @@
+"""Authority-first evidence retrieval."""

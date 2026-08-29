@@ -51,6 +51,7 @@ Each product record carries:
 - SHA-256 source/content digest;
 - content, title, topics and exact wikilinks;
 - category and domain labels;
+- explicit System Architecture container associations owned by the immutable revision;
 - classification basis and source status;
 - an authority state independent of source presence.
 
@@ -113,9 +114,21 @@ topics:
 ---
 ```
 
-## Lattice semantics
+## Lattice and architecture semantics
 
-The Memory Lattice renders product-owned records. The system architecture map remains a separate disclosed view:
+The Memory Lattice renders product-owned records for governance. The unified agent workspace also projects those records into seven explicit System Architecture memory containers:
+
+- `identity-role` — Identity & Role;
+- `goals-commitments` — Goals & Commitments;
+- `projects-work` — Projects & Work;
+- `knowledge-research` — Knowledge & Research;
+- `people-relationships` — People & Relationships;
+- `decisions-lessons` — Decisions & Lessons;
+- `preferences-context` — Preferences & Context.
+
+`architecture_node_ids` is validated at the typed API boundary, serialized with the immutable product record revision and preserved across restart. The UI never infers this association from category, domain, proximity or filename. Human review of the revision therefore covers its declared container associations. Architecture membership does not itself imply approval, truth, confidence or retrieval eligibility; the node sidebar must continue to show each associated record's authority and source state.
+
+Across both projections:
 
 - primary category controls the legend treatment;
 - domains appear as textual badges and filters;

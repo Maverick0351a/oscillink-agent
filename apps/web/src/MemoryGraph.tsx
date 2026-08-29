@@ -6,7 +6,7 @@ import {
   type NeuralTone,
   type Point3D,
 } from './foundationGraph'
-import type { CategoryLegendEntry, MemoryNodeSummary } from './memoryApi'
+import type { ArchitectureNodeId, CategoryLegendEntry, MemoryNodeSummary } from './memoryApi'
 import {
   projectionDensity,
   shouldDrawNodeLabel,
@@ -20,6 +20,7 @@ interface MemoryGraphProps {
   categories?: CategoryLegendEntry[]
   selectedId?: string | null
   selectedLinks?: string[]
+  activeRetrievalNodeIds?: ArchitectureNodeId[]
   onSelect?: (nodeId: string) => void
 }
 
@@ -45,6 +46,13 @@ interface Palette {
   bright: string
   dark: string
   glow: string
+}
+
+const RETRIEVAL_PALETTE: Palette = {
+  core: '#ff9d3f',
+  bright: '#ffe0a3',
+  dark: '#3c1c08',
+  glow: 'rgba(255, 145, 48, 0.94)',
 }
 
 interface VisualNode {
@@ -138,8 +146,21 @@ function buildVisualGraph(
 ): VisualGraph {
   if (mode === 'architecture') {
     const foundation = buildFoundationGraph(latticeState)
+    const associationCounts = new Map<string, number>()
+    for (const memory of nodes) {
+      for (const architectureNodeId of memory.architecture_node_ids) {
+        associationCounts.set(
+          architectureNodeId,
+          (associationCounts.get(architectureNodeId) ?? 0) + 1,
+        )
+      }
+    }
     return {
-      nodes: foundation.nodes.map((node) => ({ ...node, palette: PALETTES[node.tone] })),
+      nodes: foundation.nodes.map((node) => ({
+        ...node,
+        detail: `${node.detail} · ${associationCounts.get(node.id) ?? 0} memory`,
+        palette: PALETTES[node.tone],
+      })),
       connections: foundation.connections,
     }
   }
@@ -414,6 +435,7 @@ export default function MemoryGraph({
   categories = [],
   selectedId = null,
   selectedLinks = [],
+  activeRetrievalNodeIds = [],
   onSelect,
 }: MemoryGraphProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -425,6 +447,10 @@ export default function MemoryGraph({
     () => new Map(categories.map((entry) => [entry.category, entry] as const)),
     [categories],
   )
+  const architectureAssociationCount = useMemo(
+    () => nodes.reduce((total, node) => total + node.architecture_node_ids.length, 0),
+    [nodes],
+  )
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -435,7 +461,7 @@ export default function MemoryGraph({
     if (context === null) return
 
     const rotation: Rotation = { yaw: -0.38, pitch: -0.18 }
-    const drag = { active: false, x: 0, y: 0 }
+    const drag = { active: false, moved: false, x: 0, y: 0 }
     const nodeById = new Map(graph.nodes.map((node) => [node.id, node] as const))
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let width = initialBounds.width
@@ -499,11 +525,12 @@ export default function MemoryGraph({
 
       for (const node of projectedNodes) {
         const highlighted = node.node.id === hoveredId || node.node.id === selectedId
+        const retrievalActive = activeRetrievalNodeIds.includes(node.node.id as ArchitectureNodeId)
         drawNeuron(
           context,
-          node,
-          highlighted,
-          shouldDrawNodeLabel(mode, width, highlighted),
+          retrievalActive ? { ...node, node: { ...node.node, palette: RETRIEVAL_PALETTE } } : node,
+          highlighted || retrievalActive,
+          shouldDrawNodeLabel(mode, width, highlighted || retrievalActive),
         )
       }
     }
@@ -520,7 +547,7 @@ export default function MemoryGraph({
       animationFrame = window.requestAnimationFrame(tick)
     }
 
-    const pointerPosition = (event: PointerEvent) => {
+    const pointerPosition = (event: MouseEvent | PointerEvent) => {
       const bounds = canvas.getBoundingClientRect()
       return { x: event.clientX - bounds.left, y: event.clientY - bounds.top }
     }
@@ -528,6 +555,7 @@ export default function MemoryGraph({
     const handlePointerDown = (event: PointerEvent) => {
       const pointer = pointerPosition(event)
       drag.active = true
+      drag.moved = false
       drag.x = pointer.x
       drag.y = pointer.y
       canvas.setPointerCapture(event.pointerId)
@@ -537,6 +565,7 @@ export default function MemoryGraph({
     const handlePointerMove = (event: PointerEvent) => {
       const pointer = pointerPosition(event)
       if (drag.active) {
+        if (Math.hypot(pointer.x - drag.x, pointer.y - drag.y) > 3) drag.moved = true
         rotation.yaw += (pointer.x - drag.x) * 0.007
         rotation.pitch = Math.max(-1.05, Math.min(1.05, rotation.pitch + (pointer.y - drag.y) * 0.006))
         drag.x = pointer.x
@@ -568,6 +597,15 @@ export default function MemoryGraph({
       requestStaticDraw()
     }
 
+    const handleClick = (event: MouseEvent) => {
+      if (drag.moved) return
+      const pointer = pointerPosition(event)
+      const selected = [...projectedNodes]
+        .reverse()
+        .find((node) => Math.hypot(pointer.x - node.x, pointer.y - node.y) <= node.radius + 8)
+      if (selected !== undefined) onSelect?.(selected.node.id)
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       const step = 0.1
       if (event.key === 'ArrowLeft') rotation.yaw -= step
@@ -586,6 +624,7 @@ export default function MemoryGraph({
     canvas.addEventListener('pointerup', stopOrbit)
     canvas.addEventListener('pointercancel', stopOrbit)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
+    canvas.addEventListener('click', handleClick)
     canvas.addEventListener('keydown', handleKeyDown)
     window.addEventListener('resize', resize)
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize)
@@ -603,9 +642,10 @@ export default function MemoryGraph({
       canvas.removeEventListener('pointerup', stopOrbit)
       canvas.removeEventListener('pointercancel', stopOrbit)
       canvas.removeEventListener('wheel', handleWheel)
+      canvas.removeEventListener('click', handleClick)
       canvas.removeEventListener('keydown', handleKeyDown)
     }
-  }, [graph, selectedId])
+  }, [activeRetrievalNodeIds, graph, onSelect, selectedId])
 
   const isMemory = mode === 'memory'
   const instructionId = isMemory ? 'product-memory-graph-instructions' : 'neural-graph-instructions'
@@ -620,13 +660,13 @@ export default function MemoryGraph({
       <div className="graph-classification">
         {isMemory
           ? `PRODUCT MEMORY · ${nodes.length} ${nodes.length === 1 ? 'RECORD' : 'RECORDS'}`
-          : 'FOUNDATION MAP · NOT MEMORY DATA'}
+          : `ARCHITECTURE MEMORY · ${architectureAssociationCount} ${architectureAssociationCount === 1 ? 'ASSOCIATION' : 'ASSOCIATIONS'}`}
       </div>
       <canvas
         ref={canvasRef}
         className="memory-graph-canvas"
         role="img"
-        aria-label={isMemory ? 'Product memory lattice' : 'Foundation memory architecture map'}
+        aria-label={isMemory ? 'Product memory lattice' : 'System architecture memory map'}
         aria-describedby={instructionId}
         data-renderer="projected-3d-neural"
         tabIndex={0}
@@ -634,7 +674,7 @@ export default function MemoryGraph({
       <p id={instructionId} className="sr-only">
         {isMemory
           ? `${nodes.length} product memory records in a projected three-dimensional field. Only exact wikilinks from the focused record are drawn. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.`
-          : 'Seven architecture nodes connected by curved synapses in a projected three-dimensional field. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.'}
+          : 'Seven memory containers connected by curved synapses in a projected three-dimensional architecture. Select a container to inspect its explicitly associated memory. Drag or use arrow keys to orbit. Scroll or use plus and minus to zoom.'}
       </p>
       {isMemory ? (
         <ul className="memory-node-roster" aria-label="Product memory records">
@@ -657,10 +697,23 @@ export default function MemoryGraph({
           })}
         </ul>
       ) : (
-        <ul className="sr-only" aria-label="Foundation architecture nodes">
-          {graph.nodes.map((node) => (
-            <li key={node.id}>{node.label}: {node.detail}. State {node.state}.</li>
-          ))}
+        <ul className="sr-only" aria-label="Architecture memory containers">
+          {graph.nodes.map((node) => {
+            const count = nodes.filter((memory) => memory.architecture_node_ids.includes(node.id as never)).length
+            return (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  aria-label={`Inspect ${node.label}, ${count} associated memory ${count === 1 ? 'record' : 'records'}`}
+                  aria-pressed={node.id === selectedId}
+                  onClick={() => onSelect?.(node.id)}
+                >
+                  {node.label}: {node.detail}. State {node.state}.
+                  {activeRetrievalNodeIds.includes(node.id as ArchitectureNodeId) ? ' Active agent retrieval.' : ''}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

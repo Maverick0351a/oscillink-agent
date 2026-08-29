@@ -24,9 +24,9 @@ The first milestone is a governed continuity kernel:
 - typed capability grants;
 - parent-versus-candidate evaluation.
 
-The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and explicit idempotent Obsidian synchronization that preserves product identity across unambiguous source renames. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. Obsidian remains an optional connector rather than the canonical product database or review authority.
+The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
-`POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The next customer slices expose native creation and explicit source synchronization in the browser, then connect approved-only retrieval, deterministic context manifests, provider-neutral chat, citations and run inspection. Removable-volume discovery remains deferred.
+`POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The vertical chat runtime ranks approved, non-missing product memory deterministically, records query and budget omissions without exposing unapproved content, compiles a content-addressed `ContextManifest`, and emits revision- and rank-bound citations. The fake provider and configured OpenAI-compatible/Ollama adapter share that authority boundary, while each three-event trajectory remains inspectable and replayable after restart. Candidate, missing, superseded and contradicted memory remains excluded. Semantic retrieval remains future work. Removable-volume discovery remains deferred.
 
 ## Provider strategy
 
@@ -75,6 +75,17 @@ export OSCILLINK_AGENT_VAULT_DIR="$HOME/Documents/Maverick HQ"
 PYTHONPATH= .venv/Scripts/python.exe -m uvicorn oscillink_agent.api:app --host 127.0.0.1 --port 8765
 ```
 
+The deterministic fake provider remains the default. To use local Ollama without changing memory authority or retrieval policy:
+
+```bash
+export OSCILLINK_CHAT_PROVIDER=ollama
+export OSCILLINK_CHAT_BASE_URL=http://127.0.0.1:11434/v1
+export OSCILLINK_CHAT_MODEL=qwen3:14b
+PYTHONPATH= .venv/Scripts/python.exe -m uvicorn oscillink_agent.api:app --host 127.0.0.1 --port 8765
+```
+
+For another OpenAI-compatible endpoint, use `OSCILLINK_CHAT_PROVIDER=openai_compatible` and set both `OSCILLINK_CHAT_BASE_URL` and `OSCILLINK_CHAT_MODEL`. `OSCILLINK_CHAT_API_KEY` is optional and is never included in provider projections, events, artifacts or citations.
+
 If `OSCILLINK_AGENT_VAULT_DIR` is omitted, native memory still works. Empty read endpoints return a typed `unavailable` state until a native record exists; the application never guesses or creates a vault path.
 
 Start the frontend in a second terminal:
@@ -86,6 +97,10 @@ npm --prefix apps/web run dev
 Open `http://127.0.0.1:5173`. Vite proxies `/api` to the local FastAPI process. Set `OSCILLINK_AGENT_DATA_DIR` before launching the API to inspect a non-default runtime directory.
 
 Candidate and curated records expose explicit **Approve memory** and **Reject memory** actions in the inspector. Decisions are sent with typed event identities and idempotency keys, and the lattice refreshes from product-owned state after a successful review.
+
+The **Workspace Terminal** navigation surface is now available as an execution-locked preview. It exposes the intended workspace, sandbox, network, budget and audit envelope while creating no process, exposing no host path and accepting no command.
+
+The first capability-broker slice is implemented behind that locked surface: a human-approval event from the append-only ledger can authorize one exact `file.read` grant for one model actor, one portable target, one configured opaque scope, one extension set, one byte limit and at most 300 seconds. The broker atomically consumes the grant, survives restart, denies actor mismatch, expiry, reuse, scope escape, disallowed extensions, oversized or non-UTF-8 content, and returns file text explicitly marked `external_untrusted` without exposing the physical host path or enabling network access. This broker is reported as **preview** because provider-driven tool requests and tool-event integration are not connected yet; the browser terminal still executes nothing.
 
 Run the complete deterministic gate with:
 
@@ -99,7 +114,7 @@ Reviewed indexing, category colors and subject-domain labels are specified in [`
 
 ## Governed workspace terminal
 
-A terminal is technically feasible, but Oscillink will not expose an unrestricted browser-accessible host shell. A future **governed workspace terminal** must remain subordinate to authenticated workspace scope, typed capability policy and append-only run history. Human-interactive and agent-invoked modes require distinct authorization; execution must be bounded, cancellable, secret-redacted, process-tree supervised and isolated where feasible.
+A terminal is technically feasible, but Oscillink will not expose an unrestricted browser-accessible host shell. The **governed workspace terminal** must remain subordinate to authenticated workspace scope, typed capability policy and append-only run history. Human-interactive and agent-invoked modes require distinct authorization; execution must be bounded, cancellable, secret-redacted, process-tree supervised and isolated where feasible.
 
 The recommended sequence is a structured command runner after the capability broker and run inspector, followed later by a human-interactive PTY and narrowly granted agent invocation. The terminal design and acceptance criteria are in [`docs/workspace-terminal.md`](docs/workspace-terminal.md).
 
