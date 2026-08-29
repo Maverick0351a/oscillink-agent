@@ -544,6 +544,7 @@ process isolation and store/broker revalidation provide that boundary.
 - Modify: `src/oscillink_agent/storage/interfaces.py`
 - Modify: `src/oscillink_agent/api.py`
 - Test: `tests/adversarial/test_artifact_imports.py`
+- Test: `tests/integration/test_artifact_import_api.py`
 - Test: `tests/integration/test_removable_storage_api.py`
 
 **Required behavior:**
@@ -565,6 +566,8 @@ process isolation and store/broker revalidation provide that boundary.
 2. Typed local API and candidate stable-record association; browser requests never contain arbitrary absolute host paths.
 3. Trusted removable-volume discovery and disconnect handling through sanitized opaque descriptors.
 4. Browser selection/drop workflow with explicit target confirmation and review.
+
+**Status (2026-08-28):** Slices 1 and 2 are implemented. The typed local API rejects arbitrary absolute/traversal targets, validates exact stable reviewed-memory IDs before importing, preserves separate import and candidate-association provenance, uses server-populated recording time, returns idempotent canonical replays, detects changed-request key reuse with a sanitized scoped-selection digest, and distinguishes logical imported bytes from unique physical bytes. Slices 3 and 4 remain pending; no removable device is scanned and no browser drag/drop authority exists.
 
 **Gate:** removing a device during import cannot publish partial bytes, expose an absolute device path to the browser or mutate source media.
 

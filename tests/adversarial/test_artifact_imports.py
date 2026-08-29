@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import mimetypes
 from pathlib import Path
 
 import pytest
@@ -358,3 +359,41 @@ def test_failed_import_appends_sanitized_ledger_event(tmp_path: Path) -> None:
     assert replayed[0].payload["source_scope_id"] == "user_selection"
     assert replayed[0].payload["source_name"] == "missing.txt"
     assert str(source_root) not in replayed[0].model_dump_json()
+
+
+def test_media_label_does_not_depend_on_host_mime_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from oscillink_agent.domain.imports import FileImportPolicy, FileImportSelection
+    from oscillink_agent.storage.artifacts import LocalArtifactStore
+    from oscillink_agent.storage.imports import GovernedFileImporter
+
+    source_root = tmp_path / "selected"
+    source_root.mkdir()
+    (source_root / "evidence.txt").write_text("evidence", encoding="utf-8")
+    monkeypatch.setattr(mimetypes, "guess_type", lambda *_args, **_kwargs: ("text/html", None))
+    importer = GovernedFileImporter(
+        artifacts=LocalArtifactStore(tmp_path / "artifacts"),
+        scopes={"user_selection": source_root},
+        policy=FileImportPolicy.model_validate(
+            {
+                "schema_version": 1,
+                "max_bytes": 1024,
+                "chunk_bytes": 64,
+                "allowed_extensions": (".txt",),
+            }
+        ),
+    )
+
+    result = importer.import_selected(
+        FileImportSelection.model_validate(
+            {
+                "schema_version": 1,
+                "scope_id": "user_selection",
+                "target": "evidence.txt",
+            }
+        )
+    )
+
+    assert result.media_type == "text/plain"

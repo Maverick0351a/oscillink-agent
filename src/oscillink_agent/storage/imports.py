@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import mimetypes
 import os
 import stat
 from collections.abc import Mapping
@@ -50,6 +49,14 @@ _FAILURE_CODES: dict[type[BaseException], str] = {
     ImportSourceTooLargeError: "source_too_large",
     ArtifactStoreError: "artifact_store_error",
     OSError: "source_read_failed",
+}
+_MEDIA_TYPES = {
+    ".csv": "text/csv",
+    ".json": "application/json",
+    ".jsonl": "application/x-ndjson",
+    ".md": "text/markdown",
+    ".parquet": "application/vnd.apache.parquet",
+    ".txt": "text/plain",
 }
 
 
@@ -159,7 +166,7 @@ class GovernedFileImporter:
             if descriptor >= 0:
                 os.close(descriptor)
 
-        media_type = mimetypes.guess_type(resolved_source.name, strict=True)[0]
+        media_type = _MEDIA_TYPES.get(extension)
         return ImportedArtifact.model_validate(
             {
                 "schema_version": 1,
@@ -187,6 +194,12 @@ class GovernedFileImporter:
 
         if type(audit) is not FileImportAuditContext:
             raise TypeError("audited imports require an exact FileImportAuditContext")
+        selection_hash = canonical_payload_hash(
+            {
+                "scope_id": selection.scope_id,
+                "target": selection.target,
+            }
+        )
         try:
             result = self.import_selected(selection)
         except (FileImportError, ArtifactStoreError, OSError) as error:
@@ -201,6 +214,7 @@ class GovernedFileImporter:
                 "error_code": error_code,
                 "source_scope_id": selection.scope_id,
                 "source_name": selection.target.rsplit("/", maxsplit=1)[-1],
+                "selection_hash": selection_hash,
             }
             events.append(
                 self._outcome_event(audit, payload=failure_payload, artifact_refs=()),
@@ -213,6 +227,7 @@ class GovernedFileImporter:
             "status": "imported",
             "source_scope_id": result.source_scope_id,
             "source_name": result.source_name,
+            "selection_hash": selection_hash,
             "media_type": result.media_type,
             "logical_bytes": result.logical_bytes,
             "unique_physical_bytes": result.unique_physical_bytes,

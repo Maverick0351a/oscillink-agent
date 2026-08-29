@@ -168,5 +168,36 @@ class SQLiteEventStore:
                 raise LedgerCorruptionError(f"payload hash changed after append: {event_id}")
             yield event
 
+    def get_by_idempotency(self, idempotency_key: str) -> Event | None:
+        if type(idempotency_key) is not str or _IDEMPOTENCY_KEY.fullmatch(
+            idempotency_key
+        ) is None:
+            raise InvalidIdempotencyKeyError(
+                "idempotency key must be a 1-128 character portable token"
+            )
+        row = self._connection.execute(
+            """
+            SELECT event_id, event_json, event_sha256, payload_hash
+            FROM events
+            WHERE idempotency_key = ?
+            """,
+            (idempotency_key,),
+        ).fetchone()
+        if row is None:
+            return None
+        event_id, encoded, expected_digest, expected_payload_hash = row
+        actual_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        if actual_digest != expected_digest:
+            raise LedgerCorruptionError(f"event bytes changed after append: {event_id}")
+        try:
+            event = Event.model_validate_json(encoded)
+        except (TypeError, ValueError) as exc:
+            raise LedgerCorruptionError(
+                f"persisted event is malformed: {event_id}"
+            ) from exc
+        if event.payload_hash != expected_payload_hash:
+            raise LedgerCorruptionError(f"payload hash changed after append: {event_id}")
+        return event
+
     def close(self) -> None:
         self._connection.close()
