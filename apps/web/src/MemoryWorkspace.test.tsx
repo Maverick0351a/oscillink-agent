@@ -96,6 +96,12 @@ function stubReadyMemory(
       }
       payload = indexResponse
     }
+    else if (path.endsWith('/nodes') && init?.method === 'POST') {
+      return Promise.resolve(new Response(JSON.stringify(detailResponse(1)), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    }
     else if (path.endsWith('/nodes')) {
       payload = {
         ...collectionResponse,
@@ -297,6 +303,26 @@ describe('MemoryWorkspace', () => {
     expect(screen.getByRole('button', { name: 'Approve memory' })).toBeDisabled()
     expect(screen.getByText('Unlock the local workspace to record a review.')).toBeInTheDocument()
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+  })
+
+  it('reports candidate creation separately from a failed lattice refresh', async () => {
+    stubReadyMemory(200, undefined, 503)
+    render(<MemoryWorkspace latticeState="ready" mutationsEnabled />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByLabelText('Memory title'), {
+      target: { value: 'New governed decision' },
+    })
+    fireEvent.change(screen.getByLabelText('Memory content'), {
+      target: { value: 'Keep candidate authority until human review.' },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Software' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create candidate memory' }))
+
+    expect(await screen.findByText('CANDIDATE CREATED')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The candidate was created, but the lattice could not refresh.',
+    )
   })
 
   it('lets a human reject a candidate and reflects the terminal authority state', async () => {

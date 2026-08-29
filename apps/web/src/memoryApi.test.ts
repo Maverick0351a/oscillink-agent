@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { loadMemoryNode, loadMemoryProjection, reviewMemoryNode } from './memoryApi'
+import {
+  createMemoryNode,
+  loadMemoryNode,
+  loadMemoryProjection,
+  reviewMemoryNode,
+} from './memoryApi'
 
 const indexResponse = {
   schema_version: 1 as const,
@@ -52,6 +57,41 @@ const detailResponse = {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('memory API client', () => {
+  it('creates a bounded candidate memory through the authenticated API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(detailResponse), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await createMemoryNode({
+      title: 'Continuity decision',
+      content: 'Use approved memory for customer-facing answers.',
+      category: 'governance',
+      domains: ['software'],
+      topics: ['continuity', 'citations'],
+      architecture_node_ids: ['decisions-lessons'],
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/memory/nodes')
+    expect(init.method).toBe('POST')
+    expect(init.headers).toEqual(expect.objectContaining({
+      'Content-Type': 'application/json',
+    }))
+    expect(JSON.parse(String(init.body))).toEqual({
+      schema_version: 1,
+      title: 'Continuity decision',
+      content: 'Use approved memory for customer-facing answers.',
+      category: 'governance',
+      domains: ['software'],
+      topics: ['continuity', 'citations'],
+      architecture_node_ids: ['decisions-lessons'],
+    })
+  })
+
   it('loads the index and node collection as one projection snapshot', async () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       const path = String(input)

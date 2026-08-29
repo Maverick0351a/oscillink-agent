@@ -112,6 +112,15 @@ export interface MemoryNodeDetailResponse {
   node: MemoryNodeDetail
 }
 
+export interface MemoryCreateInput {
+  title: string
+  content: string
+  category: MemoryCategory
+  domains: MemoryDomain[]
+  topics: string[]
+  architecture_node_ids: ArchitectureNodeId[]
+}
+
 export interface MemoryProjection {
   index: MemoryIndexProjection
   collection: MemoryNodeCollection
@@ -155,6 +164,21 @@ export function loadMemoryNode(
     `/api/v1/memory/nodes/${encodeURIComponent(nodeId)}`,
     signal,
   )
+}
+
+export async function createMemoryNode(
+  input: MemoryCreateInput,
+): Promise<MemoryNodeDetailResponse> {
+  const response = await fetch('/api/v1/memory/nodes', {
+    method: 'POST',
+    headers: {
+      ...workspaceAuthorizationHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ schema_version: 1, ...input }),
+  })
+  if (!response.ok) throw new Error(`memory creation failed: ${response.status}`)
+  return response.json() as Promise<MemoryNodeDetailResponse>
 }
 
 export async function reviewMemoryNode(

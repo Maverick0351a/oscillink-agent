@@ -2,6 +2,7 @@ import { Network, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { buildFoundationGraph, type FeatureState } from './foundationGraph'
+import MemoryCreatePanel from './MemoryCreatePanel'
 import MemoryGraph from './MemoryGraph'
 import MemoryInspector from './MemoryInspector'
 import {
@@ -138,6 +139,7 @@ export default function MemoryWorkspace({
   const [detailError, setDetailError] = useState<string | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
+  const [creationRefreshError, setCreationRefreshError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<MemoryCategory | ''>('')
   const [domainFilter, setDomainFilter] = useState<MemoryDomain | ''>('')
@@ -277,6 +279,16 @@ export default function MemoryWorkspace({
     }
   }
 
+  const handleCreated = async () => {
+    setCreationRefreshError(null)
+    try {
+      const refreshed = await loadMemoryProjection()
+      setProjection(refreshed)
+    } catch {
+      setCreationRefreshError('The candidate was created, but the lattice could not refresh.')
+    }
+  }
+
   if (embeddedArchitecture) {
     return (
       <ArchitectureMemoryPanel
@@ -306,6 +318,9 @@ export default function MemoryWorkspace({
       ) : null}
 
       <section className="memory-command-deck" aria-label="Memory workspace controls">
+        {activeProjection === 'memory' ? (
+          <MemoryCreatePanel enabled={mutationsEnabled} onCreated={handleCreated} />
+        ) : null}
         <div className="memory-projection-tabs" aria-label="Memory projection view">
           <button
             type="button"
@@ -377,6 +392,10 @@ export default function MemoryWorkspace({
           </div>
         ) : null}
       </section>
+
+      {creationRefreshError !== null ? (
+        <div className="memory-notice error" role="alert">{creationRefreshError}</div>
+      ) : null}
 
       {unavailableMessage !== null && activeProjection === 'memory' ? (
         <div className="memory-notice unavailable" role="status">{unavailableMessage}</div>
