@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parents[1]
+WEB_ROOT = ROOT / "apps" / "web"
+NPM = "npm.cmd" if os.name == "nt" else "npm"
 SCHEMA_ROOT = ROOT / "schemas"
 PLAN = ROOT / "docs" / "build-plan.md"
 PLAN_MIRROR = (
@@ -88,6 +90,20 @@ def changed_files(base: str) -> list[Path]:
     return [ROOT / raw.decode() for raw in output.split(b"\0") if raw]
 
 
+def git_diff_classifies_as_text(base: str, path: Path) -> bool:
+    """Return whether Git's diff machinery classifies a changed file as text."""
+    relative_path = path.relative_to(ROOT)
+    output = subprocess.run(
+        ["git", "diff", "--numstat", "-z", base, "--", str(relative_path)],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout
+    record = next((item for item in output.split(b"\0") if item), b"")
+    fields = record.split(b"\t", 2)
+    return len(fields) == 3 and fields[0] != b"-" and fields[1] != b"-"
+
+
 def check_repository_invariants(base: str, *, require_clean: bool) -> str:
     run(["git", "rev-parse", "--verify", base], capture=True)
     if require_clean and git_output("status", "--porcelain"):
@@ -106,7 +122,9 @@ def check_repository_invariants(base: str, *, require_clean: bool) -> str:
     crlf_files = [
         str(path.relative_to(ROOT))
         for path in changed_files(base)
-        if path.is_file() and b"\r\n" in path.read_bytes()
+        if path.is_file()
+        and git_diff_classifies_as_text(base, path)
+        and b"\r\n" in path.read_bytes()
     ]
     if crlf_files:
         fail(f"changed files contain CRLF: {crlf_files}")
@@ -167,6 +185,11 @@ def main() -> None:
     run([sys.executable, "-m", "pytest", "-q"])
     run([sys.executable, "-m", "ruff", "check", ".", "--no-cache"])
     run([sys.executable, "-m", "mypy", "src", "--cache-dir", ".mypy_cache"])
+    if (WEB_ROOT / "package.json").is_file():
+        run([NPM, "--prefix", "apps/web", "ci"])
+        run([NPM, "--prefix", "apps/web", "test"])
+        run([NPM, "--prefix", "apps/web", "run", "typecheck"])
+        run([NPM, "--prefix", "apps/web", "run", "build"])
     digest = check_repository_invariants(args.base, require_clean=args.require_clean)
     print(f"REVIEW PASSED: base={args.base} diff_sha256={digest}")
 

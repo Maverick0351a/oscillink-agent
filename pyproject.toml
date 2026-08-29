@@ -9,12 +9,15 @@ description = "Local-first, open-weight longitudinal agent with provenance-linke
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
+  "fastapi>=0.116,<1",
   "pydantic>=2.12,<3",
   "rfc8785>=0.1.4,<0.2",
+  "uvicorn>=0.35,<1",
 ]
 
 [dependency-groups]
 dev = [
+  "httpx>=0.28,<1",
   "jsonschema>=4.25,<5",
   "mypy>=1.18,<2",
   "pytest>=8.4,<10",

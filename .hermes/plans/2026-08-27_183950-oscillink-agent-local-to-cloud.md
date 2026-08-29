@@ -85,6 +85,7 @@ human governance + reviewed state     Ollama → vLLM/NIM
 | Human governance, approved claims, procedures | Obsidian Markdown + Git | Git-backed repository or reviewed content service |
 | Conversations, model calls, tool calls, approvals, outcomes | Append-only SQLite WAL | PostgreSQL append-only/event tables |
 | Raw artifacts | Content-addressed local files | S3-compatible object storage |
+| Imported-file provenance and dataset lineage | Append-only SQLite events + immutable artifact manifests | PostgreSQL events + S3 manifests |
 | Lexical/structured retrieval | Rebuildable SQLite + FTS5 | PostgreSQL FTS and relational queries |
 | Dense retrieval | Deferred local vector index | `pgvector` only after measured need |
 | Task queue | In-process worker | PostgreSQL queue first; Redis/NATS only at measured scale |
@@ -433,15 +434,42 @@ process isolation and store/broker revalidation provide that boundary.
 
 ---
 
-### Task 7: Index reviewed Obsidian records into SQLite/FTS5
+### Task 6A: Establish the visible product shell
 
-**Objective:** Deterministically project approved Markdown records into a rebuildable lexical/structured index.
+**Objective:** Make the governed foundation launchable and inspectable without fabricating memory or agent capability.
+
+**Files:**
+- Create: `docs/frontend-architecture.md`
+- Create: `docs/appearance-contract.md`
+- Create: `src/oscillink_agent/api.py`
+- Create: `apps/web/`
+- Test: `tests/integration/test_status_api.py`
+- Test: `apps/web/src/*.test.ts*`
+
+**TDD steps:**
+
+1. Require a read-only status API that reports actual ledger and artifact state without creating runtime directories.
+2. Require an accessible Chat and Memory Lattice shell connected to that API.
+3. Keep chat disabled and labeled until the governed model runtime exists.
+4. Render a projected-3D neural architecture scaffold that is explicitly not memory data.
+5. Render a local foundation avatar labeled as an ungoverned interface preview.
+6. Add responsive, reduced-motion and keyboard-visible cyberpunk presentation.
+7. Add locked npm install, component tests, typecheck and production build to the deterministic gate.
+
+**Gate:** live browser verification shows both views, the neural renderer creates a real canvas with orbit controls, the composer remains unavailable while chat is planned, and a 390-pixel viewport has no horizontal overflow.
+
+---
+
+### Task 7: Build the reviewed Obsidian index and typed memory projection
+
+**Objective:** Deterministically index curated Markdown without modifying the vault, then expose approved records through a rebuildable typed projection and lexical index.
 
 **Files:**
 - Create: `docs/memory-contract.md`
 - Create: `src/oscillink_agent/memory/obsidian.py`
 - Create: `src/oscillink_agent/memory/indexer.py`
 - Create: `scripts/rebuild_index.py`
+- Test: `tests/unit/test_obsidian_index.py`
 - Test: `tests/integration/test_obsidian_index.py`
 
 **Required record semantics:**
@@ -453,18 +481,114 @@ process isolation and store/broker revalidation provide that boundary.
 - valid-time interval;
 - record-time interval;
 - source IDs and hashes;
+- primary category, accessible legend and subject domains;
+- classification basis distinguishing reviewed labels from automatic projection;
 - supersedes/contradicts relations;
 - sensitivity and project scope.
 
 **TDD steps:**
 
-1. Create a temporary test vault with accepted, candidate, superseded and contradictory records.
-2. Confirm the indexer excludes unapproved records from default retrieval.
-3. Confirm full index deletion and rebuild produces the same record IDs and hashes.
-4. Implement parser, validator and FTS5 projection.
-5. Commit: `feat: index reviewed Obsidian memory`.
+1. Create a temporary vault with curated notes, inbox captures, templates, malformed records and unsupported labels.
+2. Implement the deterministic read-only source index with stable path-derived IDs, SHA-256 source digests, wikilinks and explicit issue records.
+3. Add the controlled category/color and multi-domain taxonomy, allowing reviewed frontmatter overrides while recording automatic classification basis.
+4. Add typed projection API contracts without exposing absolute vault paths or direct browser filesystem access.
+5. Add approved/candidate/superseded/contradictory fixtures and exclude unapproved records from default retrieval.
+6. Implement the SQLite/FTS5 projection and confirm full deletion and rebuild reproduces record IDs and hashes.
+7. Commit: `feat: index reviewed Obsidian memory`.
 
-**Gate:** 100% recovery of canonical IDs and hashes after deleting all derived indexes.
+**Gate:** the source vault remains byte-identical after indexing, malformed sources are visible as issues, and deleting all derived indexes yields 100% recovery of canonical IDs and hashes.
+
+---
+
+### Task 7A: Connect real memory nodes, inspector and focused navigation
+
+**Objective:** Replace the primary foundation-only lattice with typed reviewed-memory nodes while retaining the seven-node architecture scaffold as a separate System Architecture view.
+
+**Files:**
+- Modify: `apps/web/src/App.tsx`
+- Modify: `apps/web/src/MemoryGraph.tsx`
+- Modify: `apps/web/src/styles.css`
+- Create: `apps/web/src/memoryApi.ts`
+- Create: `apps/web/src/memoryGraphLayout.ts`
+- Create: `apps/web/src/MemoryInspector.tsx`
+- Create: `apps/web/src/MemoryWorkspace.tsx`
+- Test: `apps/web/src/App.test.tsx`
+- Test: `apps/web/src/MemoryGraph.test.tsx`
+- Test: `apps/web/src/MemoryInspector.test.tsx`
+- Test: `apps/web/src/MemoryWorkspace.test.tsx`
+- Test: `apps/web/src/memoryApi.test.ts`
+
+**TDD steps:**
+
+1. Render only records returned by the typed projection API; never read vault files from the browser.
+2. Show category label, symbol and color plus independent domain badges.
+3. Add category/domain filters, text search and stable-ID focused navigation.
+4. Show exact source digest, relative source path, classification basis, status and wikilinks in the inspector.
+5. Draw only exact focused-record wikilinks that resolve to visible stable records; do not synthesize category, proximity or similarity edges. Keep future structural, reviewed, inferred and retrieval-session links typed and visually distinct.
+6. Preserve reduced-motion, keyboard navigation and non-color semantics.
+
+**Gate:** every visible memory node resolves to an inspectable stable record, and the architecture scaffold remains truthfully separated from memory data.
+
+---
+
+### Task 7B: Add governed file and removable-storage ingestion
+
+**Objective:** Import explicitly selected local or removable-media files into immutable artifact storage and propose associations to stable memory records without granting the browser raw filesystem authority.
+
+**Files:**
+- Create: `src/oscillink_agent/domain/imports.py`
+- Create: `src/oscillink_agent/storage/imports.py`
+- Create: `src/oscillink_agent/devices/base.py`
+- Create: `src/oscillink_agent/devices/windows.py`
+- Modify: `src/oscillink_agent/storage/interfaces.py`
+- Modify: `src/oscillink_agent/api.py`
+- Test: `tests/adversarial/test_artifact_imports.py`
+- Test: `tests/integration/test_removable_storage_api.py`
+
+**Required behavior:**
+
+- trusted local backend detects connected/disconnected volumes and returns sanitized opaque descriptors;
+- no silent device scan or automatic ingestion;
+- user explicitly selects each file or bounded selection;
+- streaming SHA-256 import avoids loading datasets wholly into memory;
+- path traversal, symlink/reparse escapes, unsupported types and size-limit violations fail closed;
+- disconnects and partial reads publish no artifact and leave an inspectable failure event;
+- identical bytes deduplicate physically while retaining separate provenance events;
+- dropping onto a node creates a candidate association to a stable record ID;
+- dropping onto a derived cluster requires choosing or creating a stable target record;
+- imported content is never executed merely because it was selected or dropped.
+
+**Gate:** removing a device during import cannot publish partial bytes, expose an absolute device path to the browser or mutate source media.
+
+---
+
+### Task 7C: Build the dataset catalog and lineage tab
+
+**Objective:** Let users register training data as governed immutable versions and inspect raw, validated, processed, split and training-ready states with truthful storage accounting.
+
+**Files:**
+- Create: `src/oscillink_agent/domain/datasets.py`
+- Create: `src/oscillink_agent/datasets/catalog.py`
+- Create: `apps/web/src/Datasets.tsx`
+- Test: `tests/unit/test_dataset_contracts.py`
+- Test: `tests/integration/test_dataset_api.py`
+- Test: `apps/web/src/Datasets.test.tsx`
+
+**Required metadata:**
+
+- dataset ID and immutable version;
+- raw and derived artifact digests;
+- import provenance, license, permitted use and sensitivity/PII class;
+- media type, logical bytes, deduplicated physical bytes and processed bytes;
+- deterministic sample/record counts when supported;
+- validation status and bounded errors;
+- processing pipeline identity, parameters, code digest and parent version;
+- train/validation/test split manifest and leakage-group keys;
+- consuming evaluation/training run IDs.
+
+**Initial formats:** bounded CSV, JSONL, Parquet, plain text and separately validated media. Reject arbitrary pickle/joblib deserialization and executable formats.
+
+**Gate:** raw versions are immutable, every processed version has complete parent/pipeline lineage, and uploading data never authorizes processing or training automatically.
 
 ---
 
@@ -532,6 +656,29 @@ OSCILLINK_MODEL_CONTEXT_BUDGET=8192
 7. Commit: `feat: add portable model provider`.
 
 **Gate:** the same integration test can pass by changing only environment variables to a compatible remote endpoint.
+
+---
+
+### Task 9A: Add the provider-first agent adapter registry
+
+**Objective:** Connect configured local or hosted agents through allowlisted adapters before exposing Oscillink agents to external clients.
+
+**Files:**
+- Create: `src/oscillink_agent/providers/agents.py`
+- Create: `src/oscillink_agent/providers/registry.py`
+- Test: `tests/contract/test_agent_provider.py`
+
+**Contract:** configured agent identity, run creation, event streaming, cancellation, declared capabilities, usage, bounded errors and provider provenance. Keep this separate from the lower-level `ModelProvider.generate()` contract.
+
+**TDD steps:**
+
+1. Test local and remote adapters against the same contract fixture.
+2. Test timeout, cancellation, malformed events and provider outage behavior.
+3. Keep credentials server-side and out of browser state, events and logs.
+4. Reject arbitrary unreviewed endpoint registration and undeclared capabilities.
+5. Record provider/model/agent identity and configuration digest per run.
+
+**Gate:** adding an allowlisted provider requires an adapter/configuration change, not changes to memory, runtime or UI authority rules.
 
 ---
 
@@ -620,6 +767,48 @@ orient → retrieve → plan → request capability → act
 
 ---
 
+### Task 12A: Add authenticated external client access and context-grounding health
+
+**Objective:** Let authorized clients invoke configured Oscillink agents while exposing calibrated context and grounding risk signals for each run.
+
+**Files:**
+- Create: `src/oscillink_agent/runtime/health.py`
+- Create: `src/oscillink_agent/api_auth.py`
+- Modify: `src/oscillink_agent/api.py`
+- Create: `apps/web/src/AgentHealth.tsx`
+- Test: `tests/adversarial/test_agent_api_auth.py`
+- Test: `tests/unit/test_context_health.py`
+
+**External client boundary:**
+
+- authenticated agent/profile IDs and project scopes;
+- narrowly scoped credentials, rate/spend limits and revocation;
+- idempotent run creation, event streaming and cancellation;
+- capability allowlists and complete event provenance;
+- no unrestricted public tool-execution endpoint;
+- local/private access first; public or multi-tenant exposure requires explicit deployment approval.
+
+**Health signals:** context utilization and remaining budget, evidence/citation coverage, stale evidence, unresolved contradictions, compression depth, retrieval sufficiency, tool failures and post-generation unsupported-claim checks.
+
+The UI label is **Context & Grounding Health**, not a hallucination detector. A composite status must expose its component measurements, threshold version and recommended recovery action. Color is never the only signal.
+
+**Gate:** low health cannot silently expand context or permissions; it triggers abstention, cited carryover, a fresh context or human escalation according to tested policy.
+
+---
+
+### Task 12B: Add bounded dataset processing jobs
+
+**Objective:** Convert registered raw datasets into validated and processed versions through supervised, reproducible workers.
+
+**Files:**
+- Create: `src/oscillink_agent/datasets/processor.py`
+- Create: `src/oscillink_agent/runtime/jobs.py`
+- Test: `tests/adversarial/test_dataset_processing.py`
+
+**Gate:** processing runs in a bounded worker, publishes outputs atomically, records exact code/configuration lineage, preserves raw artifacts and cannot execute dataset-supplied code.
+
+---
+
 ### Task 13: Create the longitudinal evaluation harness
 
 **Objective:** Measure whether memory actually improves outcomes.
@@ -643,6 +832,8 @@ orient → retrieve → plan → request capability → act
 
 **Metrics:** correctness, citation precision, evidence recall, current/as-of accuracy, obsolete-memory reuse, contradiction detection, abstention, unsafe instruction following, latency, tokens and correction burden.
 
+Also calibrate Context & Grounding Health against observed unsupported-claim, citation and abstention outcomes. Report component metrics as well as any composite status.
+
 **TDD steps:**
 
 1. Test manifest hashing and label isolation.
@@ -651,6 +842,23 @@ orient → retrieve → plan → request capability → act
 4. Implement baseline runner and report bundle.
 5. Run public smoke suite, then the protected Oscillink Agent hidden bank.
 6. Commit: `test: add longitudinal evaluation harness`.
+
+---
+
+### Task 13A: Add governed training runs
+
+**Objective:** Allow an explicitly approved, training-ready dataset version to start a reproducible candidate-training run only after the evaluation harness exists.
+
+**Required behavior:**
+
+- explicit human approval, budget, base model, dataset/split versions and training configuration;
+- pinned code/environment identity and complete output artifact lineage;
+- protected holdouts unavailable to the training process;
+- parent/candidate evaluation under equal budgets;
+- no automatic promotion or production deployment;
+- cancellation, resource limits and rollback.
+
+**Gate:** a training run cannot begin from raw/unvalidated data or promote its own result; only independently evaluated candidates can enter governed review.
 
 ---
 
@@ -753,8 +961,8 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 | Release | Finish line | Local/cloud |
 |---|---|---|
 | `v0.1` | Contracts, append-only ledger, deterministic tests | Local |
-| `v0.2` | Obsidian indexing and cited retrieval | Local |
-| `v0.3` | Qwen-powered bounded agent with one safe tool | Local |
+| `v0.2` | Reviewed lattice, governed import, dataset catalog and cited retrieval | Local |
+| `v0.3` | Provider registry, bounded agent/API, one safe tool and health telemetry | Local |
 | `v0.4` | Hidden longitudinal evaluation and poisoning tests | Local |
 | `v0.5` | Reproducible local Docker deployment | Local |
 | `v0.6` | PostgreSQL/S3/model-provider parity | Local cloud-smoke |
@@ -788,6 +996,10 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 - process-tree termination;
 - no unapproved network egress;
 - deleted-text remnants in FTS/vector indexes.
+- removable-media disconnects, path/reparse escapes and partial-import cleanup;
+- archive/format bombs and prohibited dataset deserialization;
+- dataset license/sensitivity enforcement and split leakage;
+- external client authentication, scope, rate-limit and revocation enforcement.
 
 ### Evaluation integrity
 
@@ -824,6 +1036,9 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 | Candidate overfits hidden benchmark | Freeze protocols, limit feedback, refresh holdouts, preserve leakage budget |
 | Cloud complexity arrives too early | Single GPU VM first; defer queues/Kubernetes until telemetry |
 | AGI narrative outruns evidence | Require reproducible longitudinal improvements and publish failures |
+| Removable media or imported datasets cross trust boundaries | Explicit selection, streaming validation, quarantine, immutable artifacts and provenance |
+| A context-health bar is mistaken for a hallucination detector | Expose calibrated components, uncertainty and recovery policy; never claim certainty |
+| Broad provider/client APIs expand authority | Allowlisted adapters, server-side credentials, scoped auth, quotas and broker-enforced capabilities |
 
 ---
 
