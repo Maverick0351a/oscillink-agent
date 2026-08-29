@@ -1,3 +1,5 @@
+import { workspaceAuthorizationHeaders } from './workspaceAuth'
+
 export interface ChatCitation {
   record_id: string
   content_hash: string
@@ -98,6 +100,7 @@ export async function sendChatMessage(
     method: 'POST',
     signal,
     headers: {
+      ...workspaceAuthorizationHeaders(),
       'Content-Type': 'application/json',
       'Idempotency-Key': `chat-${requestId}`,
     },

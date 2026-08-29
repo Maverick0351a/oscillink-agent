@@ -21,6 +21,7 @@ import {
 import MemoryWorkspace from './MemoryWorkspace'
 import RunInspector from './RunInspector'
 import WorkspaceTerminal from './WorkspaceTerminal'
+import { setWorkspaceCredential } from './workspaceAuth'
 
 interface ComponentStatus {
   state: 'not_initialized' | 'ready' | 'error'
@@ -31,6 +32,9 @@ interface ServiceStatus {
   service: 'oscillink-agent'
   version: string
   api_state: 'online'
+  workspace_auth: {
+    state: 'unavailable' | 'locked' | 'ready'
+  }
   storage: {
     ledger: ComponentStatus
     artifacts: ComponentStatus
@@ -65,6 +69,9 @@ export default function App() {
   const [runInspection, setRunInspection] = useState<ChatRunInspectionResponse | null>(null)
   const [runInspecting, setRunInspecting] = useState(false)
   const [chatSessionId] = useState(createChatSessionId)
+  const [credentialInput, setCredentialInput] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -76,6 +83,9 @@ export default function App() {
         return response.json() as Promise<ServiceStatus>
       })
       .then((nextStatus) => {
+        if (nextStatus.workspace_auth.state !== 'ready') {
+          setWorkspaceCredential(null)
+        }
         setStatus(nextStatus)
         setConnectionState('online')
       })
@@ -90,7 +100,33 @@ export default function App() {
 
   const apiLabel =
     connectionState === 'connecting' ? 'CONNECTING' : `API ${connectionState.toUpperCase()}`
-  const chatReady = status?.features.chat === 'ready'
+  const workspaceReady = status?.workspace_auth.state === 'ready'
+  const chatReady = status?.features.chat === 'ready' && workspaceReady
+
+  async function unlockWorkspace() {
+    const credential = credentialInput.trim()
+    if (!credential || authSubmitting) return
+    setAuthSubmitting(true)
+    setAuthError(null)
+    try {
+      const response = await fetch('/api/v1/status', {
+        headers: { Authorization: `Bearer ${credential}` },
+      })
+      if (!response.ok) throw new Error(`status request failed: ${response.status}`)
+      const nextStatus = await response.json() as ServiceStatus
+      if (nextStatus.workspace_auth.state !== 'ready') {
+        throw new Error('credential rejected')
+      }
+      setWorkspaceCredential(credential)
+      setCredentialInput('')
+      setStatus(nextStatus)
+    } catch {
+      setWorkspaceCredential(null)
+      setAuthError('The local workspace credential was not accepted.')
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
 
   async function submitChatMessage() {
     const message = chatMessage.trim()
@@ -193,6 +229,7 @@ export default function App() {
             <span className={`status-pill ${connectionState}`}>{apiLabel}</span>
             {status ? (
               <>
+                <span>AUTH {status.workspace_auth.state.toUpperCase()}</span>
                 <span><Activity size={13} aria-hidden="true" />{status.storage.ledger.record_count} events</span>
                 <span><Box size={13} aria-hidden="true" />{status.storage.artifacts.record_count} artifacts</span>
               </>
@@ -200,9 +237,33 @@ export default function App() {
           </section>
         </header>
 
+        {status?.workspace_auth.state === 'locked' ? (
+          <section className="workspace-auth-bar" aria-label="Local workspace authentication">
+            <label htmlFor="workspace-credential">Local workspace credential</label>
+            <input
+              id="workspace-credential"
+              type="password"
+              autoComplete="off"
+              value={credentialInput}
+              onChange={(event) => setCredentialInput(event.target.value)}
+            />
+            <button
+              type="button"
+              disabled={authSubmitting || !credentialInput.trim()}
+              onClick={() => void unlockWorkspace()}
+            >
+              {authSubmitting ? 'Unlocking workspace' : 'Unlock workspace'}
+            </button>
+            {authError ? <span role="alert">{authError}</span> : null}
+          </section>
+        ) : null}
+
         <main className="workspace">
           {activeView === 'memory' ? (
-            <MemoryWorkspace latticeState={status?.features.memory_lattice ?? 'planned'} />
+            <MemoryWorkspace
+              latticeState={status?.features.memory_lattice ?? 'planned'}
+              mutationsEnabled={workspaceReady}
+            />
           ) : (
             <div className="unified-agent-workspace">
             <div className={`chat-operations-column ${terminalOpen ? 'has-terminal' : ''}`}>
@@ -218,7 +279,11 @@ export default function App() {
                 </div>
                 <div className="channel-actions">
                   <span className="pending-badge">
-                    {chatReady ? 'DETERMINISTIC RUNTIME' : 'MODEL RUNTIME PENDING'}
+                    {chatReady
+                      ? 'DETERMINISTIC RUNTIME'
+                      : workspaceReady
+                        ? 'MODEL RUNTIME PENDING'
+                        : 'WORKSPACE AUTHENTICATION REQUIRED'}
                   </span>
                   <button
                     type="button"

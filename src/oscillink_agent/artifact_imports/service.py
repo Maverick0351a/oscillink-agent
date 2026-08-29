@@ -133,6 +133,7 @@ def import_artifact(
     import_scopes: Mapping[str, Path],
     request: ArtifactImportRequest,
     idempotency_key: str,
+    actor_id: str = "human_local_user",
 ) -> ArtifactImportResponse:
     if not import_scopes:
         raise HTTPException(
@@ -265,7 +266,7 @@ def import_artifact(
             session_id=f"ses_{token}",
             run_id=f"run_{token}",
             task_id=f"tsk_{token}",
-            actor=Actor(id="human_local_user", type=ActorType.HUMAN),
+            actor=Actor(id=actor_id, type=ActorType.HUMAN),
             observed_at=request.observed_at,
             recorded_at=datetime.now(tz=UTC),
             trust_class=TrustClass.EXTERNAL_UNTRUSTED,

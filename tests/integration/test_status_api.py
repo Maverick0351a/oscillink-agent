@@ -32,6 +32,39 @@ def request_status(data_root: Path) -> httpx.Response:
     return asyncio.run(request())
 
 
+def test_status_reports_workspace_auth_readiness_without_credential(
+    tmp_path: Path,
+) -> None:
+    credential = "private-status-credential"
+    app = create_app(
+        data_root=tmp_path / "runtime",
+        workspace_credential=credential,
+    )
+
+    async def request(authorization: str | None = None) -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            headers = (
+                {"Authorization": authorization}
+                if authorization is not None
+                else None
+            )
+            return await client.get("/api/v1/status", headers=headers)
+
+    locked_response = asyncio.run(request())
+    ready_response = asyncio.run(request(f"Bearer {credential}"))
+
+    assert locked_response.status_code == 200
+    assert locked_response.json()["workspace_auth"] == {"state": "locked"}
+    assert ready_response.status_code == 200
+    assert ready_response.json()["workspace_auth"] == {"state": "ready"}
+    assert credential not in locked_response.text
+    assert credential not in ready_response.text
+
+
 def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path) -> None:
     data_root = tmp_path / "runtime"
 
@@ -42,6 +75,7 @@ def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path
         "service": "oscillink-agent",
         "version": "0.1.0",
         "api_state": "online",
+        "workspace_auth": {"state": "locked"},
         "storage": {
             "ledger": {"state": "not_initialized", "record_count": 0},
             "artifacts": {"state": "not_initialized", "record_count": 0},

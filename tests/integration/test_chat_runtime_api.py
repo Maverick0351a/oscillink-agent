@@ -17,13 +17,18 @@ def request(
     json: dict[str, Any] | None = None,
     headers: dict[str, str] | None = None,
 ) -> httpx.Response:
+    request_headers = {
+        "Authorization": "Bearer oscillink-test-workspace-credential",
+        **(headers or {}),
+    }
+
     async def send() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(
             transport=transport,
             base_url="http://testserver",
         ) as client:
-            return await client.request(method, path, json=json, headers=headers)
+            return await client.request(method, path, json=json, headers=request_headers)
 
     return asyncio.run(send())
 

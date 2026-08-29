@@ -23,6 +23,7 @@ interface MemoryInspectorProps {
   error: string | null
   reviewing: boolean
   reviewError: string | null
+  reviewEnabled?: boolean
   unavailable?: boolean
   onReview: (decision: 'approved' | 'rejected') => void
 }
@@ -35,6 +36,7 @@ export default function MemoryInspector({
   error,
   reviewing,
   reviewError,
+  reviewEnabled = true,
   unavailable = false,
   onReview,
 }: MemoryInspectorProps) {
@@ -112,12 +114,16 @@ export default function MemoryInspector({
 
       {node.authority_state === 'candidate' || node.authority_state === 'curated' ? (
         <section className="memory-review-controls" aria-label="Human memory review">
-          <p>Record an immutable human decision for this revision.</p>
+          <p>
+            {reviewEnabled
+              ? 'Record an immutable human decision for this revision.'
+              : 'Unlock the local workspace to record a review.'}
+          </p>
           <div>
             <button
               type="button"
               className="approve"
-              disabled={reviewing}
+              disabled={reviewing || !reviewEnabled}
               onClick={() => onReview('approved')}
             >
               {reviewing ? <LoaderCircle size={15} aria-hidden="true" /> : <CheckCircle2 size={15} aria-hidden="true" />}
@@ -126,7 +132,7 @@ export default function MemoryInspector({
             <button
               type="button"
               className="reject"
-              disabled={reviewing}
+              disabled={reviewing || !reviewEnabled}
               onClick={() => onReview('rejected')}
             >
               <XCircle size={15} aria-hidden="true" /> Reject memory

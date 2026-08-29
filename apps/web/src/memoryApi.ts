@@ -1,3 +1,5 @@
+import { workspaceAuthorizationHeaders } from './workspaceAuth'
+
 export type MemoryProjectionState = 'ready' | 'degraded' | 'unavailable'
 export type MemoryAuthorityState =
   | 'curated'
@@ -165,6 +167,7 @@ export async function reviewMemoryNode(
     {
       method: 'POST',
       headers: {
+        ...workspaceAuthorizationHeaders(),
         'Content-Type': 'application/json',
         'Idempotency-Key': `memory-review-${requestId}`,
       },

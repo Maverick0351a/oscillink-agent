@@ -20,6 +20,7 @@ interface MemoryWorkspaceProps {
   latticeState: FeatureState
   embeddedArchitecture?: boolean
   activeRetrievalRecordIds?: string[]
+  mutationsEnabled?: boolean
 }
 
 interface ArchitectureMemoryPanelProps {
@@ -125,6 +126,7 @@ export default function MemoryWorkspace({
   latticeState,
   embeddedArchitecture = false,
   activeRetrievalRecordIds = [],
+  mutationsEnabled = true,
 }: MemoryWorkspaceProps) {
   const [activeProjection, setActiveProjection] = useState<'memory' | 'architecture'>('memory')
   const [projection, setProjection] = useState<MemoryProjection | null>(null)
@@ -435,6 +437,7 @@ export default function MemoryWorkspace({
             error={detailError}
             reviewing={reviewing}
             reviewError={reviewError}
+            reviewEnabled={mutationsEnabled}
             unavailable={state === 'unavailable'}
             onReview={handleReview}
           />

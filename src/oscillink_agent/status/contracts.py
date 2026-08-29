@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from oscillink_agent.workspaces.contracts import WorkspaceAuthStatus
+
 ComponentState = Literal["not_initialized", "ready", "error"]
 FeatureState = Literal["planned", "preview", "ready"]
 
@@ -25,5 +27,6 @@ class ServiceStatus(BaseModel):
     service: Literal["oscillink-agent"] = "oscillink-agent"
     version: str
     api_state: Literal["online"] = "online"
+    workspace_auth: WorkspaceAuthStatus
     storage: dict[str, StorageComponentStatus]
     features: dict[str, FeatureState]

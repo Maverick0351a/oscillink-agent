@@ -340,6 +340,59 @@ button:active:not(:disabled) {
   height: 100vh;
 }
 
+.workstation:has(.workspace-auth-bar) {
+  grid-template-rows: 88px auto minmax(0, 1fr);
+}
+
+.workspace-auth-bar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 320px) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 30px;
+  background: rgb(243 189 104 / 5%);
+  border-bottom: 1px solid rgb(243 189 104 / 20%);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.6px;
+}
+
+.workspace-auth-bar label {
+  color: var(--amber);
+  text-transform: uppercase;
+}
+
+.workspace-auth-bar input {
+  min-width: 0;
+  padding: 7px 9px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+}
+
+.workspace-auth-bar button {
+  padding: 7px 11px;
+  color: var(--void);
+  background: var(--amber);
+  border: 0;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.workspace-auth-bar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.workspace-auth-bar [role="alert"] {
+  color: var(--danger);
+}
+
 .topbar {
   display: flex;
   gap: 20px;

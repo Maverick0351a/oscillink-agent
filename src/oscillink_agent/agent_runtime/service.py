@@ -65,6 +65,7 @@ def create_chat_message(
     *,
     idempotency_key: str,
     provider_adapter: ChatProvider | None = None,
+    actor_id: str = "human_local_user",
 ) -> ChatMessageResponse:
     """Compile approved context, execute the configured provider, and append one run."""
 
@@ -152,7 +153,7 @@ def create_chat_message(
                 session_id=request.session_id,
                 run_id=run_id,
                 task_id=task_id,
-                actor=Actor(id="human_local_user", type=ActorType.HUMAN),
+                actor=Actor(id=actor_id, type=ActorType.HUMAN),
                 event_type=EventType.MESSAGE,
                 observed_at=compiled_at,
                 recorded_at=compiled_at,

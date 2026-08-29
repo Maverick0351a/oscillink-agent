@@ -2,11 +2,13 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import { setWorkspaceCredential } from './workspaceAuth'
 
 const statusResponse = {
   service: 'oscillink-agent',
   version: '0.1.0',
   api_state: 'online',
+  workspace_auth: { state: 'ready' },
   storage: {
     ledger: { state: 'ready', record_count: 12 },
     artifacts: { state: 'ready', record_count: 4 },
@@ -171,6 +173,7 @@ function appFetch(input: RequestInfo | URL) {
 
 afterEach(() => {
   cleanup()
+  setWorkspaceCredential(null)
   vi.unstubAllGlobals()
 })
 
@@ -189,6 +192,56 @@ describe('Oscillink Agent shell', () => {
     expect(screen.getByText('12 events')).toBeInTheDocument()
     expect(screen.getByText('4 artifacts')).toBeInTheDocument()
     expect(screen.getByText('Memory READY')).toBeInTheDocument()
+    expect(screen.getByText('AUTH READY')).toBeInTheDocument()
+  })
+
+  it('keeps mutating controls locked when workspace authentication is locked', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/api/v1/status')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...statusResponse,
+          workspace_auth: { state: 'locked' },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return appFetch(input)
+    }))
+
+    render(<App />)
+
+    expect(await screen.findByText('AUTH LOCKED')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled()
+    expect(screen.getByText('WORKSPACE AUTHENTICATION REQUIRED')).toBeInTheDocument()
+  })
+
+  it('unlocks the local workspace with an in-memory credential', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(
+      (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/api/v1/status')) {
+          const headers = new Headers(init?.headers)
+          const state = headers.get('Authorization') === 'Bearer browser-credential'
+            ? 'ready'
+            : 'locked'
+          return Promise.resolve(new Response(JSON.stringify({
+            ...statusResponse,
+            workspace_auth: { state },
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+        }
+        return appFetch(input)
+      },
+    ))
+
+    render(<App />)
+    expect(await screen.findByText('AUTH LOCKED')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('Local workspace credential'), {
+      target: { value: 'browser-credential' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Unlock workspace' }))
+
+    expect(await screen.findByText('AUTH READY')).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith('/api/v1/status', expect.objectContaining({
+      headers: { Authorization: 'Bearer browser-credential' },
+    }))
   })
 
   it('keeps chat, architecture memory, and node details in one workspace', async () => {

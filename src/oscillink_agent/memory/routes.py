@@ -4,7 +4,7 @@ import hashlib
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi import status as http_status
 
 from oscillink_agent.memory.contracts import (
@@ -38,11 +38,18 @@ from oscillink_agent.memory.repository import (
     SQLiteMemoryRepository,
 )
 from oscillink_agent.memory.service import load_memory_index
+from oscillink_agent.workspaces.contracts import LocalWorkspacePrincipal
+from oscillink_agent.workspaces.service import LocalWorkspaceAuth
 
 _IDEMPOTENCY_KEY_PATTERN = r"^[A-Za-z0-9._:-]{1,128}$"
 
 
-def build_memory_router(data_root: Path, vault_root: Path | None) -> APIRouter:
+def build_memory_router(
+    data_root: Path,
+    vault_root: Path | None,
+    *,
+    workspace_auth: LocalWorkspaceAuth,
+) -> APIRouter:
     router = APIRouter()
 
     @router.get("/api/v1/memory/index", response_model=MemoryIndexProjection)
@@ -129,7 +136,13 @@ def build_memory_router(data_root: Path, vault_root: Path | None) -> APIRouter:
         response_model=MemoryNodeDetailResponse,
         status_code=http_status.HTTP_201_CREATED,
     )
-    def create_memory_node(request: NativeMemoryCreateRequest) -> MemoryNodeDetailResponse:
+    def create_memory_node(
+        request: NativeMemoryCreateRequest,
+        _principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
+    ) -> MemoryNodeDetailResponse:
         repository = SQLiteMemoryRepository(data_root / "memory.sqlite3")
         try:
             record = repository.create_native(
@@ -154,6 +167,10 @@ def build_memory_router(data_root: Path, vault_root: Path | None) -> APIRouter:
     def review_memory_node(
         node_id: MemoryNodeId,
         request: MemoryReviewRequest,
+        _principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
         idempotency_key: Annotated[
             str,
             Header(
@@ -213,6 +230,10 @@ def build_memory_router(data_root: Path, vault_root: Path | None) -> APIRouter:
     )
     def sync_obsidian_memory(
         request: MemorySourceSyncRequest,
+        _principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
         idempotency_key: Annotated[
             str,
             Header(

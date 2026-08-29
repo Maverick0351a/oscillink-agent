@@ -73,8 +73,19 @@ Start the API from the repository root:
 
 ```bash
 export OSCILLINK_AGENT_VAULT_DIR="$HOME/Documents/Maverick HQ"
+export OSCILLINK_AGENT_WORKSPACE_CREDENTIAL="$(.venv/Scripts/python.exe -c 'import secrets; print(secrets.token_urlsafe(32))')"
+printf 'Local workspace credential: %s\n' "$OSCILLINK_AGENT_WORKSPACE_CREDENTIAL"
 PYTHONPATH= .venv/Scripts/python.exe -m uvicorn oscillink_agent.api:app --host 127.0.0.1 --port 8765
 ```
+
+The credential is generated for this launch, kept out of application logs and
+entered into the browser's **Local workspace credential** field. The browser
+keeps it only in memory; refreshing the page locks mutation controls again.
+Without `OSCILLINK_AGENT_WORKSPACE_CREDENTIAL`, status reports authentication as
+`unavailable` and every mutating route fails closed. CORS defaults to the two
+local Vite origins and trusted hosts default to `localhost`, `127.0.0.1`, and
+`testserver`; deployments must set `OSCILLINK_AGENT_ALLOWED_ORIGINS` and
+`OSCILLINK_AGENT_TRUSTED_HOSTS` explicitly as comma-separated allowlists.
 
 The deterministic fake provider remains the default. To use local Ollama without changing memory authority or retrieval policy:
 

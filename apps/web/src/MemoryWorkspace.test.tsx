@@ -284,6 +284,21 @@ describe('MemoryWorkspace', () => {
     expect(screen.queryByRole('button', { name: 'Approve memory' })).not.toBeInTheDocument()
   })
 
+  it('keeps review controls disabled while workspace authentication is locked', async () => {
+    const fetchMock = stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" mutationsEnabled={false} />)
+    await screen.findByRole('heading', { name: 'Oscillink Agent' })
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Filter by category' }), {
+      target: { value: 'research' },
+    })
+    await screen.findByRole('heading', { name: 'Agent Architecture Research' })
+
+    expect(screen.getByRole('button', { name: 'Approve memory' })).toBeDisabled()
+    expect(screen.getByText('Unlock the local workspace to record a review.')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+  })
+
   it('lets a human reject a candidate and reflects the terminal authority state', async () => {
     stubReadyMemory()
     render(<MemoryWorkspace latticeState="ready" />)

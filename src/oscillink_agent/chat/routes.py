@@ -1,11 +1,9 @@
 """FastAPI routes for the governed local chat runtime."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from oscillink_agent.agent_runtime.errors import (
     ChatIdempotencyConflictError,
@@ -24,12 +22,17 @@ from oscillink_agent.providers.openai_compatible import (
     ProviderRequestError,
     ProviderResponseError,
 )
+from oscillink_agent.workspaces.contracts import LocalWorkspacePrincipal
+from oscillink_agent.workspaces.service import LocalWorkspaceAuth
 
 _IDEMPOTENCY_KEY_PATTERN = r"^[A-Za-z0-9._:-]{1,128}$"
 
 
 def build_chat_router(
-    data_root: Path, *, provider: ChatProvider | None = None
+    data_root: Path,
+    *,
+    provider: ChatProvider | None = None,
+    workspace_auth: LocalWorkspaceAuth,
 ) -> APIRouter:
     """Bind chat application services to one configured durable root."""
 
@@ -47,6 +50,10 @@ def build_chat_router(
                 pattern=_IDEMPOTENCY_KEY_PATTERN,
             ),
         ],
+        principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
     ) -> ChatMessageResponse:
         try:
             return create_chat_message(
@@ -54,6 +61,7 @@ def build_chat_router(
                 request,
                 idempotency_key=idempotency_key,
                 provider_adapter=provider,
+                actor_id=principal.actor_id,
             )
         except ChatIdempotencyConflictError:
             raise HTTPException(

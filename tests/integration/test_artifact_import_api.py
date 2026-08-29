@@ -33,7 +33,10 @@ def post_import(
             return await client.post(
                 "/api/v1/artifact-imports",
                 json=payload,
-                headers={"Idempotency-Key": idempotency_key},
+                headers={
+                    "Authorization": "Bearer oscillink-test-workspace-credential",
+                    "Idempotency-Key": idempotency_key,
+                },
             )
 
     return asyncio.run(send())
@@ -49,6 +52,7 @@ def test_import_api_publishes_scoped_file_and_sanitized_event(tmp_path: Path) ->
         data_root=data_root,
         vault_root=None,
         import_scopes={"user_selection": source_root},
+        workspace_actor_id="human_import_operator",
     )
 
     response = post_import(
@@ -84,7 +88,9 @@ def test_import_api_publishes_scoped_file_and_sanitized_event(tmp_path: Path) ->
     assert event_row is not None
     assert payload["artifact"]["artifact_ref"] in event_row[0]
     assert str(source_root) not in event_row[0]
-    assert json.loads(event_row[0])["recorded_at"] != "2000-01-01T00:00:00Z"
+    imported_event = json.loads(event_row[0])
+    assert imported_event["recorded_at"] != "2000-01-01T00:00:00Z"
+    assert imported_event["actor"]["id"] == "human_import_operator"
 
 
 def test_import_api_creates_pending_candidate_for_stable_record(tmp_path: Path) -> None:
