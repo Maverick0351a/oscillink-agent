@@ -2,9 +2,9 @@
 
 > **For Hermes:** Execute this plan task-by-task with strict TDD and deterministic local self-review at phase gates; do not use reviewer subagents or temporary review worktrees.
 
-**Goal:** Build Oscillink Agent as a locally hosted, open-weight personal agent that develops durable, provenance-linked continuity with Maverick and can later move to scalable cloud infrastructure without rewriting its core contracts.
+**Goal:** Build Oscillink Agent as a customer-usable, model-neutral agentic memory development app that turns governed sources, conversations, files and agent runs into inspectable, provenance-linked memory without rewriting its core contracts as deployments scale.
 
-**Architecture:** Keep the agent core model-agnostic and expose inference through an OpenAI-compatible provider interface. Run Qwen 3 14B through Ollama locally, preserve `gpt-oss-20b` as a measured candidate, and move the same provider contract to vLLM or NVIDIA NIM on a cloud GPU later. Use Obsidian Markdown for human-governed knowledge, an append-only SQLite ledger for local execution events, FTS5 for retrieval, and explicit context manifests for every model call.
+**Architecture:** Keep the agent core model-agnostic and expose local or hosted inference through provider adapters. Use governed Markdown and future customer-managed sources for reviewed knowledge, an append-only event ledger for execution history, immutable artifact storage for imported evidence, FTS5 for initial retrieval, and explicit context manifests for every model call. Treat the web workspace, Memory Lattice, review queue and run inspector as product surfaces backed by typed contracts rather than decorative views.
 
 **Tech Stack:** Python 3.11, `uv`, FastAPI, Pydantic v2, SQLite WAL/FTS5, Ollama, OpenAI-compatible HTTP, pytest, Ruff, mypy, JSON Schema, YAML, Docker, Obsidian Markdown, Git; later PostgreSQL, S3-compatible object storage, vLLM/NVIDIA NIM, OpenTelemetry, and a managed container/GPU platform.
 
@@ -37,18 +37,60 @@ It does **not** mean zero cloud cost. Cloud GPU, storage, networking and operati
 
 ---
 
-## 2. First 30-day outcome
+## 2. First customer-demo outcome
 
-A fresh local process, with no prior transcript in its prompt, must be able to:
+A new customer workspace, with no prior transcript in its prompt, must be able to:
 
-1. recover an approved Oscillink Agent project state;
-2. cite every durable memory included in context;
-3. identify stale, superseded and contradictory records;
-4. answer or abstain based on evidence;
-5. execute one narrowly scoped local tool through a typed capability grant;
-6. produce a complete event trajectory and context manifest;
-7. outperform raw-transcript and hand-summary baselines on a preregistered hidden test bank;
-8. stop cleanly within configured turn, time and tool budgets.
+1. create or open a governed workspace and connect an explicit memory source;
+2. distinguish curated, candidate and approved records in the UI;
+3. inspect every durable memory included in context through the Memory Lattice and citation panel;
+4. converse through a configured model or agent provider without making one model the product identity;
+5. propose, review, approve or reject durable memory changes without silent promotion;
+6. import one explicitly selected file and inspect its immutable provenance and candidate associations;
+7. execute one narrowly scoped tool through a typed capability grant;
+8. inspect the complete run trajectory, context manifest, budgets and recovery state;
+9. restart and recover the approved workspace state without replaying a raw transcript;
+10. stop cleanly within configured turn, time and tool budgets.
+
+Evaluation against transcript and summary baselines remains a release-quality gate, but it must not block the first coherent customer workflow.
+
+### Product execution strategy
+
+Oscillink Agent is an **agentic memory workspace**, not a Qwen application and not a generic autonomous-agent launcher. Its customer value is the ability to develop, inspect and govern an agent's durable memory over time.
+
+Keep at most three active product workstreams:
+
+1. **Trustworthy Memory** — stable records, review states, provenance, contradictions, retrieval and candidate promotion.
+2. **Agent Workspace** — chat, Memory Lattice, source/import flow, proposal review, run timeline and polished demo states.
+3. **Provider and Runtime** — model/agent adapters, context compilation, bounded tools, budgets and replay.
+
+The primary customer demo journey is:
+
+```text
+create workspace
+  → connect or import governed sources
+  → inspect the Memory Lattice
+  → chat with a configured provider
+  → inspect cited context and run events
+  → review memory proposals
+  → restart and recover approved state
+```
+
+Every visible UI state must correspond to a typed backend state. UI work proceeds alongside the backend vertical slice rather than waiting until all infrastructure is complete. Removable-volume discovery, datasets, training and public multi-tenant APIs remain deferred until the core customer journey works in a local/private pilot.
+
+### Hermes inspiration and Oscillink differentiation
+
+Adopt the useful customer primitives of Hermes—workspaces, chat sessions, project context, skills/tools, durable recall, approvals and inspectable run history—without copying Hermes internals or turning Oscillink Agent into a terminal wrapper. Oscillink Agent differentiates through its governed Memory Lattice: customers can see source provenance, review state, contradictions, context inclusion and memory change over time.
+
+### Next verified milestones
+
+1. **Memory truth and review state:** replace the current reviewed-label shortcut with explicit curated, candidate and approved states; default retrieval includes only approved records; the Memory Lattice and inspector show status with text and symbols, not color alone.
+2. **Customer source and proposal flow:** add explicit browser file selection/import, candidate association, a proposal review queue and append-only approve/reject events; do not require removable-volume discovery for this workflow.
+3. **Provider-neutral chat:** add an allowlisted provider registry, deterministic fake-provider contract tests, customer-configurable provider settings, streaming chat and citation/context panels. Local Qwen is one optional adapter, not a milestone dependency.
+4. **Run and context inspector:** expose the event timeline, exact context manifest, included memory, tool requests, budgets, failures and restart/replay state in the workspace.
+5. **Bounded action and pilot packaging:** add one typed read-only tool, workspace export/backup, private authentication and a reproducible pilot deployment before considering public multi-tenancy.
+
+Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-commit gates, and remain demoable without fabricated agent capability.
 
 ---
 
@@ -119,11 +161,15 @@ All infrastructure migrations must preserve these contracts.
 
 ---
 
-## 4. Model strategy
+## 4. Provider strategy
 
-### Local baseline
+### Product boundary
 
-Use the already available `qwen3:14b` through Ollama for the first runnable system:
+Oscillink Agent is provider-neutral. Customers configure an allowlisted local or hosted model/agent provider; the workspace, memory, provenance, review and capability contracts remain unchanged. Provider credentials stay server-side, and every run records exact provider/model/configuration identity.
+
+### Local development option
+
+The already available `qwen3:14b` through Ollama remains a zero-token-cost development and offline test option:
 
 ```text
 base URL: http://localhost:11434/v1
@@ -136,9 +182,9 @@ idle unload: 5 minutes
 
 Use `qwen2.5-coder:14b` only for deliberate coding-agent comparisons.
 
-### Candidate model
+### Measured provider candidates
 
-Benchmark `gpt-oss-20b` only after the full local harness and evaluation bank work with Qwen 3 14B. Its official MXFP4 checkpoint is close to the laptop's 16 GB memory boundary, so the acceptance test must measure:
+Benchmark any local or hosted candidate only after the provider contract, customer workflow and evaluation harness work end to end. For local `gpt-oss-20b`, its official MXFP4 checkpoint is close to the laptop's 16 GB memory boundary, so an optional acceptance test must measure:
 
 - successful load;
 - VRAM headroom;
@@ -149,7 +195,7 @@ Benchmark `gpt-oss-20b` only after the full local harness and evaluation bank wo
 - quality on the same hidden tasks;
 - model unload behavior.
 
-Do not adopt an unverified “abliterated” derivative as the baseline. Use official open-weight checkpoints with external capability controls.
+Do not make any checkpoint the product identity or adopt an unverified derivative as a default. Use reviewed provider configurations with external capability controls.
 
 ### Cloud path
 
@@ -567,7 +613,7 @@ process isolation and store/broker revalidation provide that boundary.
 3. Trusted removable-volume discovery and disconnect handling through sanitized opaque descriptors.
 4. Browser selection/drop workflow with explicit target confirmation and review.
 
-**Status (2026-08-28):** Slices 1 and 2 are implemented. The typed local API rejects arbitrary absolute/traversal targets, validates exact stable reviewed-memory IDs before importing, preserves separate import and candidate-association provenance, uses server-populated recording time, returns idempotent canonical replays, detects changed-request key reuse with a sanitized scoped-selection digest, and distinguishes logical imported bytes from unique physical bytes. Slices 3 and 4 remain pending; no removable device is scanned and no browser drag/drop authority exists.
+**Status (2026-08-28):** Slices 1 and 2 are implemented. The typed local API rejects arbitrary absolute/traversal targets, validates exact stable reviewed-memory IDs before importing, preserves separate import and candidate-association provenance, uses server-populated recording time, returns idempotent canonical replays, rejects association-changing retries, detects changed-request key reuse with a sanitized scoped-selection digest, and distinguishes logical imported bytes from unique physical bytes. Slice 4's explicit browser import/review experience is now part of the customer-workspace vertical slice and follows truthful curated/candidate/approved memory states. Slice 3 removable-volume discovery is deferred until after that customer journey works; no removable device is scanned and no browser drag/drop authority exists yet.
 
 **Gate:** removing a device during import cannot publish partial bytes, expose an absolute device path to the browser or mutate source media.
 
