@@ -84,9 +84,14 @@ export default function RunInspector({ inspection, onClose }: RunInspectorProps)
           {manifest.items.map((item) => (
             <article key={`${item.record_id}:${item.content_hash}`}>
               <header>
-                <strong>{item.title}</strong>
+                <strong>{item.title ?? item.record_id}</strong>
                 <span>RANK {item.retrieval_rank} · SCORE {item.retrieval_score}</span>
               </header>
+              <small>
+                {item.category === null
+                  ? `HISTORICAL METADATA UNAVAILABLE · ${label(item.trust_class)}`
+                  : `${label(item.category)} · ${item.domains.map(label).join(' · ')} · ${label(item.trust_class)}`}
+              </small>
               <p>{item.inclusion_reason}</p>
               <code>{item.record_id}</code>
               <small>{item.content_hash}</small>

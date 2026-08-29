@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import persistedContextManifest from './fixtures/persistedContextManifest.json'
 import { setWorkspaceCredential } from './workspaceAuth'
 
 const statusResponse = {
@@ -108,35 +109,7 @@ function appFetch(input: RequestInfo | URL) {
           payload: { answer: 'Grounded in approved memory: Oscillink Agent.' },
         },
       ],
-      context_manifest: {
-        id: 'ctx_01ARZ3NDEKTSV4RRFFQ69G5FC1',
-        schema_version: 1,
-        task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
-        compiled_at: '2026-08-29T00:00:01Z',
-        token_budget: 2048,
-        total_token_count: 8,
-        policy_hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        items: [{
-          record_id: memoryNode.id,
-          content_hash: memoryNode.content_hash,
-          title: memoryNode.title,
-          category: 'project',
-          domains: ['ai_ml'],
-          status: 'approved',
-          inclusion_reason: 'lexical_match rank=1 score=4',
-          token_count: 8,
-          source_refs: [],
-          retrieval_rank: 1,
-          retrieval_score: 4,
-        }],
-        omissions: [],
-        exclusion_summary: {
-          not_approved_count: 0,
-          missing_source_count: 0,
-          superseded_count: 0,
-          conflict_count: 0,
-        },
-      },
+      context_manifest: persistedContextManifest,
     }
   } else if (path.endsWith('/chat/messages')) {
     payload = {
@@ -151,16 +124,7 @@ function appFetch(input: RequestInfo | URL) {
         content_hash: memoryNode.content_hash,
         title: memoryNode.title,
       }],
-      context_manifest: {
-        id: 'ctx_01ARZ3NDEKTSV4RRFFQ69G5FC1',
-        schema_version: 1,
-        task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
-        compiled_at: '2026-08-29T00:00:00Z',
-        token_budget: 2048,
-        total_token_count: 8,
-        policy_hash: 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
-        items: [],
-      },
+      context_manifest: persistedContextManifest,
     }
   }
   return Promise.resolve(
@@ -303,6 +267,10 @@ describe('Oscillink Agent shell', () => {
     expect(within(runInspector).getByText('MODEL CALL')).toBeInTheDocument()
     expect(within(runInspector).getByText('Oscillink Agent')).toBeInTheDocument()
     expect(within(runInspector).getByText('RANK 1 · SCORE 4')).toBeInTheDocument()
+    expect(
+      within(runInspector).getByText('PROJECT · AI ML · HUMAN VERIFIED'),
+    ).toBeInTheDocument()
+    expect(within(runInspector).queryByText(/undefined/i)).not.toBeInTheDocument()
     expect(within(runInspector).getByText('0 UNAPPROVED EXCLUDED')).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/v1/chat/sessions/ses_01ARZ3NDEKTSV4RRFFQ69G5FC1/runs/run_01ARZ3NDEKTSV4RRFFQ69G5FC1',

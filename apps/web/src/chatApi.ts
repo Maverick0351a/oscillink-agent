@@ -19,9 +19,10 @@ export interface ContextManifestProjection {
   items: Array<{
     record_id: string
     content_hash: string
-    title: string
-    category: string
+    title: string | null
+    category: string | null
     domains: string[]
+    trust_class: 'human_verified' | 'tool_verified' | 'model_generated' | 'external_untrusted' | 'system'
     status: string
     inclusion_reason: string
     token_count: number

@@ -8,6 +8,14 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 
 SCHEMA_ROOT = Path(__file__).parents[2] / "schemas"
+FRONTEND_CONTEXT_FIXTURE = (
+    Path(__file__).parents[2]
+    / "apps"
+    / "web"
+    / "src"
+    / "fixtures"
+    / "persistedContextManifest.json"
+)
 
 
 def load_schema(name: str) -> dict[str, Any]:
@@ -164,6 +172,9 @@ def complete_context_manifest() -> dict[str, Any]:
             {
                 "record_id": "clm_01J00000000000000000000000",
                 "content_hash": "sha256:" + "d" * 64,
+                "title": "Approved project outcome",
+                "category": "governance",
+                "domains": ["software"],
                 "inclusion_reason": "Approved project outcome is required for task orientation.",
                 "trust_class": "human_verified",
                 "status": "approved",
@@ -176,6 +187,13 @@ def complete_context_manifest() -> dict[str, Any]:
 
 def test_context_manifest_schema_accepts_cited_items() -> None:
     validate("context-manifest.schema.json", complete_context_manifest())
+
+
+def test_frontend_persisted_context_fixture_matches_wire_schema() -> None:
+    with FRONTEND_CONTEXT_FIXTURE.open(encoding="utf-8") as handle:
+        fixture = json.load(handle)
+
+    validate("context-manifest.schema.json", fixture)
 
 
 def complete_capability_grant() -> dict[str, Any]:

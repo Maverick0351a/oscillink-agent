@@ -71,6 +71,9 @@ def compile_context(
             ContextItem(
                 record_id=record.id,
                 content_hash=record.content_hash,
+                title=record.title,
+                category=record.category,
+                domains=record.domains,
                 inclusion_reason=(
                     f"approved lexical evidence rank={rank} score={score}"
                 ),

@@ -1,0 +1,32 @@
+{
+  "id": "ctx_01ARZ3NDEKTSV4RRFFQ69G5FC1",
+  "schema_version": 1,
+  "task_id": "tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1",
+  "compiled_at": "2026-08-29T00:00:01Z",
+  "token_budget": 2048,
+  "total_token_count": 8,
+  "policy_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "items": [
+    {
+      "record_id": "mem_A37PTXSESJE0P4NFJTD7E7RRAH",
+      "content_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "title": "Oscillink Agent",
+      "category": "project",
+      "domains": ["ai_ml"],
+      "inclusion_reason": "approved lexical evidence rank=1 score=4",
+      "trust_class": "human_verified",
+      "status": "approved",
+      "token_count": 8,
+      "source_refs": ["mem_A37PTXSESJE0P4NFJTD7E7RRAH"],
+      "retrieval_rank": 1,
+      "retrieval_score": 4
+    }
+  ],
+  "omissions": [],
+  "exclusion_summary": {
+    "not_approved_count": 0,
+    "missing_source_count": 0,
+    "superseded_count": 0,
+    "conflict_count": 0
+  }
+}

@@ -63,6 +63,15 @@
       "properties": {
         "record_id": {"$ref": "#/$defs/record_id"},
         "content_hash": {"$ref": "#/$defs/digest"},
+        "title": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+        "category": {"type": ["string", "null"], "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_-]*$"},
+        "domains": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_-]*$"},
+          "minItems": 0,
+          "maxItems": 16,
+          "uniqueItems": true
+        },
         "inclusion_reason": {"type": "string", "minLength": 1},
         "trust_class": {
           "enum": [

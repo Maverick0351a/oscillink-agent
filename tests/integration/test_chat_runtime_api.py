@@ -93,6 +93,9 @@ def test_approved_memory_is_cited_in_a_persisted_fake_provider_run(tmp_path: Any
         {
             "record_id": created["id"],
             "content_hash": created["content_hash"],
+            "title": "Approved continuity",
+            "category": "governance",
+            "domains": ["software"],
             "inclusion_reason": "approved lexical evidence rank=1 score=4",
             "trust_class": "human_verified",
             "status": "approved",

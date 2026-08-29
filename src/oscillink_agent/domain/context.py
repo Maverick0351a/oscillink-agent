@@ -22,6 +22,15 @@ RecordId = Annotated[
     str,
     Field(pattern=r"^(evt|clm|doc|mem|prc)_[0-9A-HJKMNP-TV-Z]{26}$"),
 ]
+ContextTitle = Annotated[str, Field(min_length=1, max_length=512)]
+ContextCategory = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_-]*$"),
+]
+ContextDomain = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_-]*$"),
+]
 
 
 class ContextStatus(StrEnum):
@@ -39,6 +48,9 @@ class ContextOmissionReason(StrEnum):
 class ContextItem(FrozenModel):
     record_id: RecordId
     content_hash: Digest
+    title: ContextTitle | None = None
+    category: ContextCategory | None = None
+    domains: Annotated[tuple[ContextDomain, ...], Field(max_length=16)] = ()
     inclusion_reason: Annotated[str, Field(min_length=1)]
     trust_class: TrustClass
     status: ContextStatus
