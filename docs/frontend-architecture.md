@@ -2,12 +2,12 @@
 
 ## Product boundary
 
-Oscillink Agent uses a dedicated first-party web interface. Obsidian remains the reviewed human knowledge and governance authority; it is not the chat runtime, transactional ledger, artifact store, or browser application.
+Oscillink Agent uses a dedicated first-party web interface. The product-owned memory repository is canonical for stable IDs, immutable revisions, authority transitions and review decisions. Obsidian remains an optional customer-authored source and portability adapter; it is not required for onboarding, identity, review authority, the transactional ledger, artifact storage, or the browser application.
 
 ```text
-Obsidian reviewed Markdown ─┐
-SQLite append-only events ─┼─> projection/context services ─> typed HTTP API ─> web UI
-SHA-256 artifacts ─────────┘
+Native records + optional sources ┐
+Product memory + SQLite events ───┼─> projection/context services ─> typed HTTP API ─> web UI
+SHA-256 artifacts ────────────────┘
 ```
 
 The browser never opens vault paths, SQLite databases, or artifact paths directly. Every record displayed by the browser arrives through a typed API response.
@@ -21,6 +21,7 @@ The browser never opens vault paths, SQLite databases, or artifact paths directl
 - a disabled chat composer while the model runtime is unavailable;
 - a local SVG foundation avatar identified as an interface preview;
 - a projected-3D reviewed-memory lattice with stable-record focus, search, category/domain filters and an exact-provenance inspector;
+- browser approve/reject controls for candidate and curated product records, with pending, failure and refresh states;
 - the neural architecture scaffold retained as a separate System Architecture view clearly marked as non-memory data;
 - reduced-motion and responsive layout support.
 
@@ -30,7 +31,8 @@ The Python API exposes read-only status inspection and a typed reviewed-memory p
 
 | State | Authority | Browser behavior |
 |---|---|---|
-| Reviewed notes and governance | Obsidian Markdown and Git lineage | Display cited excerpts and open canonical notes |
+| Product memory and governance | Product-owned records, immutable revisions and append-only reviews | Display provenance, authority and governed actions |
+| Optional source documents | Customer-authored source plus product source binding | Display sanitized locator and synchronization state |
 | Execution events | Append-only SQLite ledger | Display trajectory and runtime status |
 | Raw evidence | Content-addressed artifact store | Request by validated digest only |
 | Search and graph layout | Rebuildable projections | Filter, navigate, and discard safely |
@@ -47,6 +49,9 @@ Implemented endpoints:
 - `GET /api/v1/memory/index` for projection health, legends and issues;
 - `GET /api/v1/memory/nodes` with controlled category and domain filters;
 - `GET /api/v1/memory/nodes/{node_id}` for focused inspector metadata.
+- `POST /api/v1/memory/nodes` for native candidate creation;
+- `POST /api/v1/memory/nodes/{node_id}/reviews` for governed review decisions;
+- `POST /api/v1/memory/sources/obsidian/sync` for explicit configured-source synchronization.
 
 Planned endpoints are versioned under `/api/v1`:
 
@@ -56,6 +61,7 @@ Planned endpoints are versioned under `/api/v1`:
 - `GET /memory/graph` with temporal and review filters;
 - artifact retrieval by digest, never by host path;
 - appearance candidate, preview, approval, and rollback operations.
+- governed command-runner and terminal-session endpoints only after capability, authentication and process-supervision prerequisites are complete.
 
 ## Memory Lattice contract
 
@@ -84,6 +90,10 @@ The shared renderer uses deterministic XYZ coordinates projected onto an applica
 Development runs FastAPI on `127.0.0.1:8765` and Vite on `127.0.0.1:5173`; Vite proxies `/api` to FastAPI. Production should serve the built frontend and API under one origin. A later desktop wrapper may use Tauri without changing the browser/API contracts.
 
 Loopback is not authentication. Before enabling chat or mutation endpoints, add a per-launch local credential, strict origin checks, sanitized Markdown rendering, explicit capability approvals, and bounded request sizes.
+
+## Governed terminal direction
+
+The browser may eventually expose a Workspace Terminal, but never a direct or unrestricted host shell. The first terminal-adjacent surface should be a structured command runner tied to an authenticated workspace, actor, typed grant, bounded process, sanitized output and append-only run record. A persistent human-interactive PTY follows only after process-tree cancellation, reconnect/orphan handling, secret redaction, terminal-escape sanitization and sandbox policy are verified. Agent-proposed commands are inert until authorized, and agent-invoked commands require narrower grants than human-interactive use. See [`workspace-terminal.md`](workspace-terminal.md).
 
 ## Verification
 

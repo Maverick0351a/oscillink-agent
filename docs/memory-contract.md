@@ -140,4 +140,4 @@ The current boundary exposes:
 
 Responses use typed `ready`, `degraded` and `unavailable` states. Invalid category/domain labels and malformed `doc_`/`mem_` IDs are rejected before lookup. The browser receives only relative source locators and cannot access the filesystem directly. Artifact candidate associations can target either legacy `doc_` source projections or product-owned `mem_` records during migration.
 
-The next milestone is to expose review actions and source synchronization controls in the customer UI, then connect approved-memory retrieval and deterministic context manifests.
+The next milestones expose native creation and explicit source synchronization in the customer UI, then add approved-only retrieval, provenance-bearing evidence packets and deterministic context manifests. Browser review controls for candidate and curated records are implemented.

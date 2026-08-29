@@ -14,7 +14,18 @@
 
 ## 1. Product boundary
 
-Oscillink Agent is a governed longitudinal agent and successor-engineering platform. It should become more useful through verified external memory, reusable skills, better context compilation, tool integration and evaluated candidate improvements.
+Oscillink Agent is the **memory control plane for long-running AI agents**: a governed, provider-neutral workspace for durable memory, deterministic context, bounded capabilities and inspectable runs. It should help customers preserve continuity without losing provenance, human control, portability, or the ability to explain and reverse what changed.
+
+The product addresses six primary customer failures:
+
+1. fragmented memory scattered across transcripts, prompts, files, vector stores and provider-specific systems;
+2. opaque or poisoned memory whose authority, freshness, contradictions and origin cannot be inspected;
+3. irreproducible answers and actions without exact retrieval, context, provider, tool and budget records;
+4. provider, connector and filename lock-in that makes external systems accidental identity and authority layers;
+5. overly broad credentials, filesystem, network and shell authority for narrow agent tasks;
+6. incomplete export, deletion, rollback, restore and operational recovery.
+
+The infrastructure answer is product-owned stable identity and immutable revisions, explicit human-governed authority, approved-only provenance-bearing retrieval, deterministic context manifests, interchangeable provider adapters, typed capability grants, replayable run history and portable recovery. See `docs/product-description.md`.
 
 Version 0 does **not** attempt to:
 
@@ -89,6 +100,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 3. **Provider-neutral chat:** add an allowlisted provider registry, deterministic fake-provider contract tests, customer-configurable provider settings, streaming chat and citation/context panels. Local Qwen is one optional adapter, not a milestone dependency.
 4. **Run and context inspector:** expose the event timeline, exact context manifest, included memory, tool requests, budgets, failures and restart/replay state in the workspace.
 5. **Bounded action and pilot packaging:** add one typed read-only tool, workspace export/backup, private authentication and a reproducible pilot deployment before considering public multi-tenancy.
+6. **Governed workspace terminal evaluation:** after authentication, the capability broker, process supervision and run inspection are verified, add a structured command runner before considering a human-interactive PTY or narrowly granted agent invocation. Never expose an unrestricted browser-accessible host shell.
 
 Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-commit gates, and remain demoable without fabricated agent capability.
 
@@ -791,6 +803,33 @@ OSCILLINK_MODEL_CONTEXT_BUDGET=8192
 6. Commit: `feat: enforce typed capability grants`.
 
 **Gate:** no model text or retrieved document can create or expand a grant.
+
+---
+
+### Task 11A: Evaluate and prototype a governed workspace terminal
+
+**Objective:** Let customers build and inspect AI infrastructure through reproducible workspace operations without exposing an unrestricted browser-accessible host shell.
+
+**Prerequisites:** authenticated workspace/actor identity, capability broker, process supervisor, full process-tree cancellation, run inspector, secret-redaction policy and one verified bounded read-only tool.
+
+**Files:**
+- Create: `src/oscillink_agent/runtime/commands.py`
+- Modify: `src/oscillink_agent/runtime/broker.py`
+- Modify: `src/oscillink_agent/runtime/supervisor.py`
+- Create: `apps/web/src/WorkspaceRunner.tsx`
+- Create: `tests/adversarial/test_workspace_commands.py`
+- Reference: `docs/workspace-terminal.md`
+
+**Delivery order:**
+
+1. Start with a non-interactive structured command runner declaring executable, arguments, relative working directory, environment allowlist, timeout, output limit, network policy and expected artifacts.
+2. Bind every request to actor, workspace, run, policy/grant version and append-only command events.
+3. Execute inside a disposable sandbox with read-only workspace access by default, bounded writable outputs, no host home/credential mounts, no Docker socket and network disabled by default.
+4. Test path/symlink/reparse escape, cross-workspace access, secret redaction, output/runtime limits, cancellation, process-tree cleanup, grant mismatch/reuse and terminal-control-sequence sanitization.
+5. Add a human-interactive PTY only after reconnect, orphan, clipboard, escape-sequence and session-isolation behavior is verified.
+6. Permit agent invocation only through narrower typed grants; destructive, privileged, networked, deployment, credential and governance operations remain denied or explicitly confirmation-gated.
+
+**Gate:** human terminal use never grants reusable agent authority, and agent/retrieved text cannot trigger a command or widen its grant. Host execution is a separate high-risk capability and never a silent fallback from sandbox failure.
 
 ---
 

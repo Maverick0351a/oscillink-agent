@@ -1,6 +1,17 @@
 # Oscillink Agent
 
-Oscillink Agent is a customer-facing, model-neutral agentic memory workspace. It helps people connect governed sources, inspect how an agent's memory develops, review durable proposals, trace cited context and run history, and move from local/private use to scalable deployment without changing the core provenance and authority contracts.
+Oscillink Agent is the **memory control plane for long-running AI agents**: a customer-facing, model-neutral workspace for governed memory, deterministic context, bounded capabilities and inspectable runs. It helps teams preserve continuity without losing provenance, human control, portability, or the ability to explain and reverse what changed.
+
+## Problems it solves
+
+- **Fragmented continuity:** decisions and corrections are scattered across transcripts, prompts, files, vector stores and provider-specific memory.
+- **Opaque or poisoned memory:** retrieved and generated text is often treated as trusted merely because it exists.
+- **Irreproducible behavior:** teams cannot reconstruct which memory revisions, retrieval policy, model configuration, tools and budgets produced an answer.
+- **Provider and connector lock-in:** paths, note applications and model vendors become accidental identity and authority systems.
+- **Unsafe actions:** agents receive broad credentials, filesystem access or shell authority to perform narrow tasks.
+- **Weak recovery:** export, deletion, rollback and restore are rarely complete product contracts.
+
+Oscillink answers these problems with stable product-owned memory identities, immutable revisions, explicit authority states, human-reviewed promotion, provenance-bearing retrieval, deterministic context manifests, interchangeable providers, typed capability grants and replayable run history. The complete product description is in [`docs/product-description.md`](docs/product-description.md).
 
 ## Current milestone
 
@@ -13,9 +24,9 @@ The first milestone is a governed continuity kernel:
 - typed capability grants;
 - parent-versus-candidate evaluation.
 
-The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and explicit idempotent Obsidian synchronization that preserves product identity across unambiguous source renames. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance. Obsidian remains an optional connector rather than the canonical product database or review authority.
+The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and explicit idempotent Obsidian synchronization that preserves product identity across unambiguous source renames. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
-`POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The next customer slice exposes create, synchronization and review controls in the browser, then connects approved-memory retrieval, provider-neutral chat, citations and run inspection. Removable-volume discovery remains deferred.
+`POST /api/v1/artifact-imports` accepts only configured opaque source scopes and portable relative targets, streams selected files through bounded type/size and symlink/reparse checks, returns sanitized logical/physical deduplication accounting, and supports canonical idempotent retries that reject association-changing reuse. An optional exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The next customer slices expose native creation and explicit source synchronization in the browser, then connect approved-only retrieval, deterministic context manifests, provider-neutral chat, citations and run inspection. Removable-volume discovery remains deferred.
 
 ## Provider strategy
 
@@ -85,6 +96,12 @@ PYTHONPATH= .venv/Scripts/python.exe scripts/verify.py --base HEAD
 The implementation plan is in [`docs/build-plan.md`](docs/build-plan.md).
 Frontend and appearance boundaries are in [`docs/frontend-architecture.md`](docs/frontend-architecture.md) and [`docs/appearance-contract.md`](docs/appearance-contract.md).
 Reviewed indexing, category colors and subject-domain labels are specified in [`docs/memory-contract.md`](docs/memory-contract.md).
+
+## Governed workspace terminal
+
+A terminal is technically feasible, but Oscillink will not expose an unrestricted browser-accessible host shell. A future **governed workspace terminal** must remain subordinate to authenticated workspace scope, typed capability policy and append-only run history. Human-interactive and agent-invoked modes require distinct authorization; execution must be bounded, cancellable, secret-redacted, process-tree supervised and isolated where feasible.
+
+The recommended sequence is a structured command runner after the capability broker and run inspector, followed later by a human-interactive PTY and narrowly granted agent invocation. The terminal design and acceptance criteria are in [`docs/workspace-terminal.md`](docs/workspace-terminal.md).
 
 ## Safety boundary
 
