@@ -540,6 +540,7 @@ process isolation and store/broker revalidation provide that boundary.
 - Create: `src/oscillink_agent/storage/imports.py`
 - Create: `src/oscillink_agent/devices/base.py`
 - Create: `src/oscillink_agent/devices/windows.py`
+- Modify: `src/oscillink_agent/storage/artifacts.py`
 - Modify: `src/oscillink_agent/storage/interfaces.py`
 - Modify: `src/oscillink_agent/api.py`
 - Test: `tests/adversarial/test_artifact_imports.py`
@@ -557,6 +558,13 @@ process isolation and store/broker revalidation provide that boundary.
 - dropping onto a node creates a candidate association to a stable record ID;
 - dropping onto a derived cluster requires choosing or creating a stable target record;
 - imported content is never executed merely because it was selected or dropped.
+
+**Implementation slices:**
+
+1. Backend import foundation: strict selection/policy/result contracts, scoped source validation, streaming staged SHA-256 publication, size/extension limits, symlink/reparse rejection, deduplication accounting and canonical success/failure event construction.
+2. Typed local API and candidate stable-record association; browser requests never contain arbitrary absolute host paths.
+3. Trusted removable-volume discovery and disconnect handling through sanitized opaque descriptors.
+4. Browser selection/drop workflow with explicit target confirmation and review.
 
 **Gate:** removing a device during import cannot publish partial bytes, expose an absolute device path to the browser or mutate source media.
 

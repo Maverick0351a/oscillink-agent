@@ -13,7 +13,7 @@ The first milestone is a governed continuity kernel:
 - typed capability grants;
 - parent-versus-candidate evaluation.
 
-The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, a deterministic read-only Obsidian metadata index, a typed memory projection API, and a launchable cyberpunk web shell. The shell reports live backend/storage status, renders real reviewed records with search, category/domain filters and an exact-provenance inspector, keeps the architecture scaffold as a separate non-memory view, and keeps chat disabled until the governed runtime exists.
+The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, a backend-only governed file-import primitive, a deterministic read-only Obsidian metadata index, a typed memory projection API, and a launchable cyberpunk web shell. Explicitly selected scoped files can be streamed into immutable artifacts with bounded size/type policy, symlink/reparse rejection, physical deduplication, sanitized outcomes and append-only success/failure provenance; no browser import API or removable-volume monitor is exposed yet. The shell reports live backend/storage status, renders real reviewed records with search, category/domain filters and an exact-provenance inspector, keeps the architecture scaffold as a separate non-memory view, and keeps chat disabled until the governed runtime exists.
 
 ## Model strategy
 

@@ -8,8 +8,9 @@ import re
 import stat
 import tempfile
 from pathlib import Path
+from typing import BinaryIO
 
-from oscillink_agent.storage.interfaces import ArtifactStoreError
+from oscillink_agent.storage.interfaces import ArtifactPublication, ArtifactStoreError
 
 _ARTIFACT_REFERENCE = re.compile(r"sha256:[0-9a-f]{64}")
 
@@ -28,6 +29,18 @@ class ArtifactNotFoundError(ArtifactStoreError):
 
 class InvalidArtifactContentError(ArtifactStoreError):
     """Artifact ingress requires exact immutable bytes."""
+
+
+class ArtifactLimitExceededError(ArtifactStoreError):
+    """A streamed artifact exceeded its configured byte limit."""
+
+
+class InvalidArtifactStreamError(ArtifactStoreError):
+    """A streamed artifact returned a value other than exact bytes."""
+
+
+class ArtifactLengthMismatchError(ArtifactStoreError):
+    """A streamed artifact ended at a different length than selected."""
 
 
 class ArtifactPathEscapeError(ArtifactStoreError):
@@ -75,6 +88,75 @@ class LocalArtifactStore:
         finally:
             temporary.unlink(missing_ok=True)
         return reference
+
+    def put_stream(
+        self,
+        stream: BinaryIO,
+        *,
+        max_bytes: int,
+        chunk_bytes: int,
+        expected_bytes: int | None = None,
+    ) -> ArtifactPublication:
+        if type(max_bytes) is not int or max_bytes < 0:
+            raise ValueError("max_bytes must be a non-negative built-in integer")
+        if type(chunk_bytes) is not int or chunk_bytes < 1:
+            raise ValueError("chunk_bytes must be a positive built-in integer")
+        if expected_bytes is not None and (
+            type(expected_bytes) is not int or expected_bytes < 0
+        ):
+            raise ValueError("expected_bytes must be a non-negative built-in integer or None")
+
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=".stream.",
+            suffix=".tmp",
+            dir=self._root,
+        )
+        temporary = Path(temporary_name)
+        digest = hashlib.sha256()
+        byte_count = 0
+        try:
+            with os.fdopen(descriptor, "wb") as temporary_file:
+                while True:
+                    chunk = stream.read(chunk_bytes)
+                    if type(chunk) is not bytes:
+                        raise InvalidArtifactStreamError(
+                            "artifact streams must return the built-in bytes type"
+                        )
+                    if chunk == b"":
+                        break
+                    byte_count += len(chunk)
+                    if byte_count > max_bytes:
+                        raise ArtifactLimitExceededError(
+                            f"artifact exceeds configured limit of {max_bytes} bytes"
+                        )
+                    digest.update(chunk)
+                    temporary_file.write(chunk)
+                temporary_file.flush()
+                os.fsync(temporary_file.fileno())
+
+            if expected_bytes is not None and byte_count != expected_bytes:
+                raise ArtifactLengthMismatchError(
+                    f"artifact length changed from {expected_bytes} to {byte_count} bytes"
+                )
+
+            hexadecimal = digest.hexdigest()
+            reference = f"sha256:{hexadecimal}"
+            target = self._root / hexadecimal[:2] / hexadecimal[2:]
+            self._reject_path_escape(target.parent, reference)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            self._reject_path_escape(target.parent, reference)
+            self._reject_path_escape(target, reference)
+            if target.exists():
+                self.get(reference)
+                return ArtifactPublication(reference, byte_count, True)
+            try:
+                os.link(temporary, target)
+            except FileExistsError:
+                self.get(reference)
+                return ArtifactPublication(reference, byte_count, True)
+            return ArtifactPublication(reference, byte_count, False)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def get(self, reference: str) -> bytes:
         hexadecimal = self._parse_reference(reference)
