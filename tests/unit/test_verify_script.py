@@ -98,3 +98,32 @@ def test_git_binary_diff_is_not_scanned_for_line_endings(
         "HEAD",
         binary_path,
     )
+
+
+def test_roadmap_capability_ledger_rejects_unknown_states(tmp_path: Path) -> None:
+    verify = load_verify_module()
+    plan = tmp_path / "build-plan.md"
+    plan.write_text(
+        "\n".join(
+            (
+                "<!-- capability-ledger:start -->",
+                "| Capability | State | Evidence |",
+                "|---|---|---|",
+                "| Governed memory | complete | `memory/repository.py` |",
+                "<!-- capability-ledger:end -->",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit, match="unknown roadmap capability state: complete"):
+        verify.check_roadmap_capability_states(plan)  # type: ignore[attr-defined]
+
+
+def test_roadmap_capability_ledger_is_required(tmp_path: Path) -> None:
+    verify = load_verify_module()
+    plan = tmp_path / "build-plan.md"
+    plan.write_text("# Plan without an executable ledger\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="capability ledger markers are missing"):
+        verify.check_roadmap_capability_states(plan)  # type: ignore[attr-defined]

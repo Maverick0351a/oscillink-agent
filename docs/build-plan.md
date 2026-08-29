@@ -93,16 +93,33 @@ Every visible UI state must correspond to a typed backend state. UI work proceed
 
 Adopt the useful customer primitives of Hermes—workspaces, chat sessions, project context, skills/tools, durable recall, approvals and inspectable run history—without copying Hermes internals or turning Oscillink Agent into a terminal wrapper. Oscillink Agent differentiates through its governed Memory Lattice: customers can see source provenance, review state, contradictions, context inclusion and memory change over time.
 
-### Next verified milestones
+### Current executable capability ledger
 
-1. **Memory truth and review state:** product-owned `mem_` identities, native candidates, explicit Obsidian synchronization, append-only approve/reject decisions, restart recovery, authority-aware lattice projections and browser review controls are now implemented. Next, expose native create and explicit source-sync controls in the browser and make default retrieval approved-only.
-2. **Customer source and proposal flow:** add explicit browser file selection/import, product-record candidate association, a proposal review queue and customer-facing approve/reject actions; do not require removable-volume discovery for this workflow.
-3. **Provider-neutral chat:** add an allowlisted provider registry, deterministic fake-provider contract tests, customer-configurable provider settings, streaming chat and citation/context panels. Local Qwen is one optional adapter, not a milestone dependency.
-4. **Run and context inspector:** expose the event timeline, exact context manifest, included memory, tool requests, budgets, failures and restart/replay state in the workspace.
-5. **Bounded action and pilot packaging:** add one typed read-only tool, workspace export/backup, private authentication and a reproducible pilot deployment before considering public multi-tenancy.
-6. **Governed workspace terminal evaluation:** after authentication, the capability broker, process supervision and run inspection are verified, add a structured command runner before considering a human-interactive PTY or narrowly granted agent invocation. Never expose an unrestricted browser-accessible host shell.
+<!-- capability-ledger:start -->
+| Capability | State | Evidence |
+|---|---|---|
+| Domain schemas and immutable event contracts | implemented | `src/oscillink_agent/domain/`, `schemas/` |
+| Append-only ledger and content-addressed artifacts | implemented | `src/oscillink_agent/storage/` |
+| Product-owned memory identities, revisions and review | implemented | `src/oscillink_agent/memory/` |
+| Approved-only lexical retrieval and context manifests | implemented | `src/oscillink_agent/retrieval/`, `src/oscillink_agent/context/` |
+| Fake and OpenAI-compatible provider chat | implemented | `src/oscillink_agent/providers/`, `src/oscillink_agent/chat/` |
+| Persisted run inspection | preview | Three-event runs work; multi-call/tool reconstruction is not implemented |
+| Governed file import | preview | Backend and adversarial tests exist; browser onboarding is not implemented |
+| Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
+| Browser memory creation, source sync and proposal review | planned | Required to close the first customer journey |
+| Authenticated local workspace boundary | planned | Mutation routes are not yet protected |
+| Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
+| Longitudinal evaluation and recovery package | planned | Required before private-pilot release |
+| Semantic retrieval, training, multi-agent and cloud scale | deferred | Add only after measured product need |
+<!-- capability-ledger:end -->
 
-Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-commit gates, and remain demoable without fabricated agent capability.
+### Active maturity milestones
+
+1. **Browser-complete governed memory journey:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
+2. **Crash-safe provider and governed tool trajectory:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
+3. **Reproducible private pilot and measured value:** add versioned export/restore, a bounded deployment path and a longitudinal evaluation against transcript and summary baselines.
+
+Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-range gates, and remain demoable without fabricated capability.
 
 ---
 
@@ -224,78 +241,37 @@ The model alias—not application code—selects local versus cloud inference.
 
 ## 5. Repository layout
 
+The executable repository currently separates domain contracts from adapters
+and keeps planned infrastructure out of the runtime tree:
+
 ```text
 oscillink-agent/
-├── .hermes/plans/
-├── .github/workflows/ci.yml
-├── docs/
-│   ├── architecture.md
-│   ├── build-plan.md
-│   ├── model-strategy.md
-│   ├── memory-contract.md
-│   ├── threat-model.md
-│   └── adr/
-│       ├── 0001-openai-compatible-model-boundary.md
-│       ├── 0002-authority-by-record-class.md
-│       └── 0003-local-first-cloud-portable.md
-├── schemas/
-│   ├── event.schema.json
-│   ├── context-manifest.schema.json
-│   ├── capability-grant.schema.json
-│   ├── benchmark-manifest.schema.json
-│   └── memory-claim.schema.json
+├── apps/web/                   React workspace, Memory Lattice and inspectors
+├── docs/                       product, memory, frontend and terminal contracts
+├── schemas/                    event, context, capability and benchmark schemas
+├── scripts/verify.py           deterministic candidate/immutable-range gate
 ├── src/oscillink_agent/
-│   ├── __init__.py
-│   ├── api.py
-│   ├── config.py
-│   ├── domain/
-│   │   ├── events.py
-│   │   ├── memory.py
-│   │   ├── context.py
-│   │   ├── capabilities.py
-│   │   └── benchmarks.py
-│   ├── providers/
-│   │   ├── base.py
-│   │   └── openai_compatible.py
-│   ├── storage/
-│   │   ├── sqlite.py
-│   │   ├── artifacts.py
-│   │   └── migrations/
-│   ├── memory/
-│   │   ├── indexer.py
-│   │   ├── retriever.py
-│   │   ├── compiler.py
-│   │   └── obsidian.py
-│   ├── runtime/
-│   │   ├── loop.py
-│   │   ├── broker.py
-│   │   └── supervisor.py
-│   └── evaluation/
-│       ├── runner.py
-│       ├── metrics.py
-│       └── baselines.py
-├── tests/
-│   ├── contract/
-│   ├── unit/
-│   ├── integration/
-│   └── adversarial/
-├── evaluations/
-│   ├── public/
-│   └── manifests/
-├── scripts/
-│   ├── verify_local_model.py
-│   ├── rebuild_index.py
-│   └── run_hidden_suite.py
-├── .env.example
-├── .gitignore
-├── AGENTS.md
-├── README.md
-├── docker-compose.local.yml
-├── pyproject.toml
-└── uv.lock
+│   ├── agent_runtime/          run orchestration and persisted reconstruction
+│   ├── artifact_imports/       governed selected-file import boundary
+│   ├── capabilities/           typed single-use file-read broker
+│   ├── chat/                   transport contracts and routes
+│   ├── context/                deterministic context compiler
+│   ├── domain/                 infrastructure-independent contracts
+│   ├── memory/                 product records, revisions and review
+│   ├── providers/              fake and OpenAI-compatible adapters
+│   ├── retrieval/              approved-only lexical retrieval
+│   ├── status/                 truthful service readiness projection
+│   └── storage/                SQLite ledger and immutable artifacts
+└── tests/
+    ├── adversarial/
+    ├── contract/
+    ├── integration/
+    └── unit/
 ```
 
-Protected hidden labels must live outside agent-readable repository paths during actual evaluation.
+`evaluation/`, deployment, migration/export and broader tool-runtime modules
+remain planned. Protected labels must stay outside agent-readable repository
+paths during actual evaluation.
 
 ---
 
@@ -1057,14 +1033,12 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 
 | Release | Finish line | Local/cloud |
 |---|---|---|
-| `v0.1` | Contracts, append-only ledger, deterministic tests | Local |
-| `v0.2` | Reviewed lattice, governed import, dataset catalog and cited retrieval | Local |
-| `v0.3` | Provider registry, bounded agent/API, one safe tool and health telemetry | Local |
-| `v0.4` | Hidden longitudinal evaluation and poisoning tests | Local |
-| `v0.5` | Reproducible local Docker deployment | Local |
-| `v0.6` | PostgreSQL/S3/model-provider parity | Local cloud-smoke |
-| `v0.7` | Private single-GPU cloud deployment | Cloud |
-| `v1.0` | Measured continuity improvement, rollback and operational runbook | Hybrid |
+| `v0.1` | Governed memory kernel, approved retrieval, provider chat and three-event run inspection | Local technical alpha |
+| `v0.2` | Authenticated browser-complete governed memory journey | Local/private |
+| `v0.3` | Crash-safe multi-call run with one governed `file.read` | Local/private |
+| `v0.4-private-pilot` | Versioned export/restore, deployment runbook and public evaluation | Private pilot |
+| `v0.4` | Completed pilot rehearsal with measured outcomes and no critical recovery/auth defects | Private |
+| `v1.0` | Repeated measured continuity improvement, rollback and operational evidence | Hybrid only if demanded |
 
 ---
 
@@ -1141,16 +1115,15 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 
 ## 10. Immediate execution order
 
-Execute Tasks 1–4 first. Do not write the agent loop until schemas and hidden evaluation structure exist.
-
-The first implementation checkpoint is:
+The repository bootstrap, schemas, ledger, memory authority, approved retrieval,
+provider chat and initial workspace already exist. Execute the three active
+maturity milestones in dependency order:
 
 ```text
-repository initialized
-+ project note created
-+ quality gates passing
-+ four schemas valid
-+ immutable domain objects tested
+authenticated browser-complete memory journey
+→ crash-safe multi-call provider/tool trajectory
+→ export, restore, deployment and longitudinal pilot evidence
 ```
 
-Only then proceed to event storage and memory retrieval.
+Do not add terminal execution, semantic retrieval, datasets, training,
+multi-agent orchestration or cloud scale while these finish lines remain open.

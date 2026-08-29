@@ -32,6 +32,11 @@ SECURITY_PATTERNS = {
         r"execute\(f['\"]|\.format\([^\n]*(?:SELECT|INSERT)"
     ),
 }
+ROADMAP_CAPABILITY_STATES = frozenset(
+    {"implemented", "preview", "contract-only", "planned", "deferred"}
+)
+CAPABILITY_LEDGER_START = "<!-- capability-ledger:start -->"
+CAPABILITY_LEDGER_END = "<!-- capability-ledger:end -->"
 
 
 def fail(message: str) -> NoReturn:
@@ -80,6 +85,24 @@ def require_no_untracked_files() -> None:
         )
 
 
+def check_roadmap_capability_states(path: Path) -> None:
+    """Reject capability-ledger states outside the reviewed roadmap vocabulary."""
+    text = path.read_text(encoding="utf-8")
+    if text.count(CAPABILITY_LEDGER_START) != 1 or text.count(CAPABILITY_LEDGER_END) != 1:
+        fail("capability ledger markers are missing or duplicated")
+    ledger = text.split(CAPABILITY_LEDGER_START, 1)[1].split(
+        CAPABILITY_LEDGER_END,
+        1,
+    )[0]
+    for line in ledger.splitlines():
+        columns = [column.strip() for column in line.strip().strip("|").split("|")]
+        if len(columns) != 3 or columns[0] in {"Capability", "---"}:
+            continue
+        state = columns[1]
+        if state not in ROADMAP_CAPABILITY_STATES:
+            fail(f"unknown roadmap capability state: {state}")
+
+
 def changed_files(base: str) -> list[Path]:
     output = subprocess.run(
         ["git", "diff", "--name-only", "-z", base, "--"],
@@ -114,6 +137,7 @@ def check_repository_invariants(base: str, *, require_clean: bool) -> str:
 
     if PLAN.read_bytes() != PLAN_MIRROR.read_bytes():
         fail("docs/build-plan.md and its .hermes plan mirror differ")
+    check_roadmap_capability_states(PLAN)
 
     for schema_path in sorted(SCHEMA_ROOT.glob("*.json")):
         json.loads(schema_path.read_text(encoding="utf-8"))
