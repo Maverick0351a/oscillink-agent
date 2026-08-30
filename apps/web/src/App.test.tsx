@@ -274,6 +274,7 @@ describe('Oscillink Agent shell', () => {
     expect(within(runInspector).getByText('0 UNAPPROVED EXCLUDED')).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
       '/api/v1/chat/sessions/ses_01ARZ3NDEKTSV4RRFFQ69G5FC1/runs/run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+      { headers: {} },
     )
   })
 

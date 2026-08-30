@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
+from oscillink_agent.agent_runtime.contracts import RunReconstruction
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.domain.events import Event, EventId, RunId, SessionId, TaskId
 
@@ -74,6 +75,7 @@ class ChatRunInspectionResponse(BaseModel):
     run_id: RunId
     events: tuple[Event, ...]
     context_manifest: ContextManifest
+    reconstruction: RunReconstruction
 
     @field_serializer("events")
     def serialize_events(self, value: tuple[Event, ...]) -> list[dict[str, object]]:

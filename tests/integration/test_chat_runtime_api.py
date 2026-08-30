@@ -1,12 +1,28 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
 
+from oscillink_agent.agent_runtime.errors import ChatRunIncompleteError
+from oscillink_agent.agent_runtime.repository import SQLiteChatRunRepository
 from oscillink_agent.api import create_app
+from oscillink_agent.domain.context import ContextManifest
+from oscillink_agent.domain.events import (
+    Actor,
+    ActorType,
+    Event,
+    EventType,
+    ModelIdentity,
+    Sensitivity,
+    TrustClass,
+    canonical_payload_hash,
+)
+from oscillink_agent.storage.artifacts import LocalArtifactStore
 
 
 def request(
@@ -141,6 +157,41 @@ def test_approved_memory_is_cited_in_a_persisted_fake_provider_run(tmp_path: Any
         run["events"][1]["artifact_refs"][0]
     )
     assert run["events"][2]["payload"]["answer"] == payload["answer"]
+    assert run["reconstruction"] == {
+        "schema_version": 1,
+        "session_id": payload["session_id"],
+        "run_id": payload["run_id"],
+        "task_id": payload["task_id"],
+        "state": "completed",
+        "pending_action": None,
+        "steps": [
+            {
+                "sequence": 0,
+                "event_id": run["events"][0]["id"],
+                "kind": "request_recorded",
+                "event_type": "message",
+                "causal_parent_ids": [],
+            },
+            {
+                "sequence": 1,
+                "event_id": run["events"][1]["id"],
+                "kind": "model_call_succeeded",
+                "event_type": "model_call",
+                "causal_parent_ids": [run["events"][0]["id"]],
+            },
+            {
+                "sequence": 2,
+                "event_id": run["events"][2]["id"],
+                "kind": "final_response",
+                "event_type": "message",
+                "causal_parent_ids": [run["events"][1]["id"]],
+            },
+        ],
+        "context_manifest_ref": run["events"][1]["artifact_refs"][0],
+        "final_response_event_id": run["events"][2]["id"],
+        "model_call_count": 1,
+        "tool_call_count": 0,
+    }
 
 
 def test_candidate_memory_is_excluded_from_chat_context(tmp_path: Any) -> None:
@@ -180,6 +231,135 @@ def test_candidate_memory_is_excluded_from_chat_context(tmp_path: Any) -> None:
     assert payload["answer"] == "No approved memory was available for this request."
     assert payload["citations"] == []
     assert payload["context_manifest"]["items"] == []
+
+
+def test_typed_multi_step_run_is_reconstructed_after_restart(tmp_path: Any) -> None:
+    data_root = tmp_path / "runtime"
+    session_id = "ses_01ARZ3NDEKTSV4RRFFQ69G5FM0"
+    run_id = "run_01ARZ3NDEKTSV4RRFFQ69G5FM0"
+    task_id = "tsk_01ARZ3NDEKTSV4RRFFQ69G5FM0"
+    manifest = ContextManifest(
+        id="ctx_01ARZ3NDEKTSV4RRFFQ69G5FM0",
+        schema_version=1,
+        task_id=task_id,
+        compiled_at="2026-08-30T06:30:00Z",
+        token_budget=256,
+        total_token_count=0,
+        policy_hash="sha256:" + "3" * 64,
+        items=(),
+    )
+    repository = SQLiteChatRunRepository(data_root)
+    manifest_ref = repository.put_context_manifest(manifest)
+    observation_ref = LocalArtifactStore(data_root / "artifacts").put(b"governed evidence")
+    model = ModelIdentity(
+        provider="fake",
+        name="deterministic-tool-v1",
+        configuration_hash="sha256:" + "4" * 64,
+    )
+    actors = {
+        ActorType.HUMAN: "human_test_operator",
+        ActorType.MODEL: "model_deterministic_tool",
+        ActorType.TOOL: "tool_file_read",
+        ActorType.SYSTEM: "system_agent_runtime",
+    }
+    trust = {
+        ActorType.HUMAN: TrustClass.HUMAN_VERIFIED,
+        ActorType.MODEL: TrustClass.MODEL_GENERATED,
+        ActorType.TOOL: TrustClass.EXTERNAL_UNTRUSTED,
+        ActorType.SYSTEM: TrustClass.SYSTEM,
+    }
+    specifications = (
+        ("M1", EventType.MESSAGE, "request_recorded", ActorType.HUMAN, ()),
+        ("M2", EventType.OUTCOME, "context_compiled", ActorType.SYSTEM, (manifest_ref,)),
+        ("M3", EventType.MODEL_CALL, "model_call_pending", ActorType.SYSTEM, ()),
+        ("M4", EventType.OUTCOME, "model_call_succeeded", ActorType.MODEL, ()),
+        ("M5", EventType.TOOL_CALL, "tool_requested", ActorType.MODEL, ()),
+        ("M6", EventType.APPROVAL, "grant_approved", ActorType.HUMAN, ()),
+        ("M7", EventType.TOOL_CALL, "tool_call_claimed", ActorType.TOOL, ()),
+        ("M8", EventType.OBSERVATION, "observation", ActorType.TOOL, (observation_ref,)),
+        ("M9", EventType.MODEL_CALL, "model_call_pending", ActorType.SYSTEM, ()),
+        ("MA", EventType.OUTCOME, "model_call_succeeded", ActorType.MODEL, ()),
+        ("MB", EventType.MESSAGE, "final_response", ActorType.MODEL, ()),
+    )
+    entries: list[tuple[Event, str]] = []
+    parent: str | None = None
+    for sequence, (suffix, event_type, operation, actor_type, artifact_refs) in enumerate(
+        specifications
+    ):
+        payload = {"operation": operation}
+        if operation == "final_response":
+            payload.update({"answer": "Governed tool trajectory complete.", "citations": []})
+        occurred_at = datetime(2026, 8, 30, 6, 30, tzinfo=UTC) + timedelta(
+            seconds=sequence
+        )
+        run_event = Event(
+            id=f"evt_01ARZ3NDEKTSV4RRFFQ69G5F{suffix}",
+            schema_version=1,
+            session_id=session_id,
+            run_id=run_id,
+            task_id=task_id,
+            actor=Actor(id=actors[actor_type], type=actor_type),
+            event_type=event_type,
+            observed_at=occurred_at,
+            recorded_at=occurred_at,
+            payload_hash=canonical_payload_hash(payload),
+            artifact_refs=artifact_refs,
+            causal_parent_ids=() if parent is None else (parent,),
+            trust_class=trust[actor_type],
+            sensitivity=Sensitivity.INTERNAL,
+            payload=payload,
+            model=(
+                model
+                if actor_type is ActorType.MODEL or event_type is EventType.MODEL_CALL
+                else None
+            ),
+        )
+        entries.append((run_event, f"multi-step-run:{sequence}"))
+        parent = run_event.id
+    repository.append_many(entries)
+
+    replayed = repository.response_from_run(repository.inspect(session_id, run_id))
+    assert replayed.answer == "Governed tool trajectory complete."
+    assert replayed.provider.model == "deterministic-tool-v1"
+
+    restarted = create_app(data_root=data_root, vault_root=None)
+    inspected = request(
+        restarted,
+        "GET",
+        f"/api/v1/chat/sessions/{session_id}/runs/{run_id}",
+    )
+
+    assert inspected.status_code == 200, inspected.text
+    payload = inspected.json()
+    assert payload["context_manifest"] == manifest.model_dump(mode="json")
+    assert payload["reconstruction"]["state"] == "completed"
+    assert payload["reconstruction"]["model_call_count"] == 2
+    assert payload["reconstruction"]["tool_call_count"] == 1
+    assert [step["kind"] for step in payload["reconstruction"]["steps"]] == [
+        specification[2] for specification in specifications
+    ]
+
+    mismatched_root = tmp_path / "mismatched-runtime"
+    mismatched_repository = SQLiteChatRunRepository(mismatched_root)
+    mismatched_manifest_ref = mismatched_repository.put_context_manifest(
+        manifest.model_copy(update={"task_id": "tsk_01ARZ3NDEKTSV4RRFFQ69G5FM1"})
+    )
+    LocalArtifactStore(mismatched_root / "artifacts").put(b"governed evidence")
+    mismatched_entries = tuple(
+        (
+            run_event.model_copy(
+                update={"artifact_refs": (mismatched_manifest_ref,)}
+            )
+            if run_event.payload["operation"] == "context_compiled"
+            else run_event,
+            idempotency_key,
+        )
+        for run_event, idempotency_key in entries
+    )
+    mismatched_repository.append_many(mismatched_entries)
+
+    with pytest.raises(ChatRunIncompleteError):
+        mismatched_repository.inspect(session_id, run_id)
 
 
 def test_retrieval_ranking_and_omissions_are_deterministic_and_inspectable(

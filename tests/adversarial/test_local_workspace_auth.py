@@ -156,6 +156,27 @@ def test_anonymous_chat_fails_without_initializing_storage(tmp_path: Path) -> No
     assert not data_root.exists()
 
 
+def test_anonymous_run_inspection_fails_without_initializing_storage(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    app = create_app(
+        data_root=data_root,
+        vault_root=None,
+        workspace_credential="test-private-credential",
+    )
+
+    response = request(
+        app,
+        "GET",
+        "/api/v1/chat/sessions/ses_01ARZ3NDEKTSV4RRFFQ69G5FAV/"
+        "runs/run_01ARZ3NDEKTSV4RRFFQ69G5FAV",
+    )
+
+    assert response.status_code == 401, response.json()
+    assert not data_root.exists()
+
+
 def test_anonymous_artifact_import_fails_without_initializing_storage(
     tmp_path: Path,
 ) -> None:
@@ -272,6 +293,7 @@ def test_chat_events_use_the_server_derived_actor(tmp_path: Path) -> None:
             f"/api/v1/chat/sessions/{created.json()['session_id']}"
             f"/runs/{created.json()['run_id']}"
         ),
+        headers={"Authorization": "Bearer test-private-credential"},
     )
 
     assert inspected.status_code == 200, inspected.json()

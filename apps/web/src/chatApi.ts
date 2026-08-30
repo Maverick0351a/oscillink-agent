@@ -71,12 +71,57 @@ export interface RunEventProjection {
   } | null
 }
 
+export type RunStepKind =
+  | 'request_recorded'
+  | 'context_compiled'
+  | 'model_call_pending'
+  | 'model_call_succeeded'
+  | 'model_call_failed'
+  | 'model_call_interrupted'
+  | 'tool_requested'
+  | 'grant_approved'
+  | 'grant_denied'
+  | 'tool_call_claimed'
+  | 'observation'
+  | 'tool_failed'
+  | 'final_response'
+
+export interface RunReconstructionProjection {
+  schema_version: 1
+  session_id: string
+  run_id: string
+  task_id: string
+  state: 'in_progress' | 'awaiting_approval' | 'completed' | 'failed' | 'interrupted'
+  pending_action:
+    | 'context_compilation'
+    | 'provider_dispatch'
+    | 'provider_result'
+    | 'model_continuation'
+    | 'human_approval'
+    | 'tool_execution'
+    | 'tool_result'
+    | 'provider_follow_up'
+    | null
+  steps: Array<{
+    sequence: number
+    event_id: string
+    kind: RunStepKind
+    event_type: string
+    causal_parent_ids: string[]
+  }>
+  context_manifest_ref: string | null
+  final_response_event_id: string | null
+  model_call_count: number
+  tool_call_count: number
+}
+
 export interface ChatRunInspectionResponse {
   schema_version: number
   session_id: string
   run_id: string
   events: RunEventProjection[]
   context_manifest: ContextManifestProjection
+  reconstruction: RunReconstructionProjection
 }
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -123,6 +168,7 @@ export async function inspectChatRun(
 ): Promise<ChatRunInspectionResponse> {
   const response = await fetch(
     `/api/v1/chat/sessions/${encodeURIComponent(sessionId)}/runs/${encodeURIComponent(runId)}`,
+    { headers: workspaceAuthorizationHeaders() },
   )
   if (!response.ok) {
     throw new Error(`run inspection failed: ${response.status}`)

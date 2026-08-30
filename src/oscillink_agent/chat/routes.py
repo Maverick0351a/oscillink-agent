@@ -84,6 +84,10 @@ def build_chat_router(
     def get_run(
         session_id: SessionId,
         run_id: RunId,
+        _principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
     ) -> ChatRunInspectionResponse:
         try:
             return inspect_chat_run(data_root, session_id, run_id)
