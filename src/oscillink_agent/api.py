@@ -14,6 +14,7 @@ from oscillink_agent import __version__
 from oscillink_agent.artifact_imports.routes import build_artifact_import_router
 from oscillink_agent.chat.routes import build_chat_router
 from oscillink_agent.memory.routes import build_memory_router
+from oscillink_agent.proposals.routes import build_proposal_router
 from oscillink_agent.providers.base import ChatProvider
 from oscillink_agent.providers.config import build_chat_provider
 from oscillink_agent.status.routes import build_status_router
@@ -122,6 +123,9 @@ def create_app(
             configured_import_scopes,
             workspace_auth=workspace_auth,
         )
+    )
+    application.include_router(
+        build_proposal_router(root, workspace_auth=workspace_auth)
     )
     return application
 

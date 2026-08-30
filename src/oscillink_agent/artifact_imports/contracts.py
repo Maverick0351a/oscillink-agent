@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from oscillink_agent.domain.capabilities import PortableTarget, ScopeId
 from oscillink_agent.domain.events import EventId
@@ -23,6 +23,36 @@ def _parse_transport_datetime(value: object) -> datetime:
 
 
 TransportDatetime = Annotated[datetime, BeforeValidator(_parse_transport_datetime)]
+
+
+class ArtifactImportTargetProjection(BaseModel):
+    """One server-enumerated portable target without a host path."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    target: PortableTarget
+    source_name: str
+    logical_bytes: Annotated[int, Field(ge=0)]
+
+
+class ArtifactImportScopeProjection(BaseModel):
+    """Opaque configured scope and its currently selectable targets."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    scope_id: ScopeId
+    state: Literal["configured", "unavailable"]
+    targets: tuple[ArtifactImportTargetProjection, ...]
+
+
+class ArtifactImportSourceCollection(BaseModel):
+    """Browser-safe configured import choices."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    count: Annotated[int, Field(ge=0)]
+    scopes: tuple[ArtifactImportScopeProjection, ...]
 
 
 class ArtifactImportRequest(BaseModel):

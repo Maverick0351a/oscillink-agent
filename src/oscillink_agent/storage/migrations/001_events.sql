@@ -12,6 +12,16 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS events_session_sequence
     ON events (session_id, sequence);
 
+CREATE UNIQUE INDEX IF NOT EXISTS events_one_artifact_association_review
+    ON events (
+        CASE
+            WHEN json_valid(event_json)
+            THEN json_extract(event_json, '$.payload.proposal_id')
+        END
+    )
+    WHERE json_valid(event_json)
+      AND json_extract(event_json, '$.payload.operation') = 'artifact_association_review';
+
 CREATE TRIGGER IF NOT EXISTS events_reject_update
 BEFORE UPDATE ON events
 BEGIN

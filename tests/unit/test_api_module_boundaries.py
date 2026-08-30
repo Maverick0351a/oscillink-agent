@@ -43,6 +43,14 @@ def test_artifact_import_route_is_mounted_from_a_dedicated_router(tmp_path: Path
     )
 
 
+def test_proposal_routes_are_mounted_from_a_dedicated_router(tmp_path: Path) -> None:
+    assert _route_module(
+        "/api/v1/memory-proposals",
+        "GET",
+        data_root=tmp_path / "runtime",
+    ) == "oscillink_agent.proposals.routes"
+
+
 def test_chat_runtime_uses_a_dedicated_approved_retrieval_service() -> None:
     retrieval = getattr(chat_runtime, "retrieve_approved_memory", None)
     assert retrieval is not None

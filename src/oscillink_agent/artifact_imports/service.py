@@ -10,6 +10,9 @@ from fastapi import HTTPException
 from oscillink_agent.artifact_imports.contracts import (
     ArtifactImportRequest,
     ArtifactImportResponse,
+    ArtifactImportScopeProjection,
+    ArtifactImportSourceCollection,
+    ArtifactImportTargetProjection,
     CandidateArtifactAssociation,
     ImportedArtifactProjection,
     UnattachedArtifactAssociation,
@@ -65,6 +68,56 @@ _IMPORT_REPLAY_ERRORS: dict[str, tuple[int, str]] = {
     "source_too_large": (413, "source_too_large"),
     "source_unavailable": (409, "source_unavailable"),
 }
+
+_MAX_EXPOSED_TARGETS_PER_SCOPE = 512
+
+
+def list_import_sources(
+    import_scopes: Mapping[str, Path],
+) -> ArtifactImportSourceCollection:
+    """Enumerate bounded portable choices without exposing configured host roots."""
+
+    scopes: list[ArtifactImportScopeProjection] = []
+    for scope_id, root in sorted(import_scopes.items()):
+        if not root.is_dir():
+            scopes.append(
+                ArtifactImportScopeProjection(
+                    scope_id=scope_id,
+                    state="unavailable",
+                    targets=(),
+                )
+            )
+            continue
+        resolved_root = root.resolve()
+        targets: list[ArtifactImportTargetProjection] = []
+        for candidate in sorted(root.rglob("*")):
+            if len(targets) >= _MAX_EXPOSED_TARGETS_PER_SCOPE:
+                break
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            if candidate.suffix.lower() not in _IMPORT_POLICY.allowed_extensions:
+                continue
+            try:
+                resolved_candidate = candidate.resolve(strict=True)
+                relative = resolved_candidate.relative_to(resolved_root)
+                logical_bytes = resolved_candidate.stat().st_size
+            except (OSError, ValueError):
+                continue
+            targets.append(
+                ArtifactImportTargetProjection(
+                    target=relative.as_posix(),
+                    source_name=relative.name,
+                    logical_bytes=logical_bytes,
+                )
+            )
+        scopes.append(
+            ArtifactImportScopeProjection(
+                scope_id=scope_id,
+                state="configured",
+                targets=tuple(targets),
+            )
+        )
+    return ArtifactImportSourceCollection(count=len(scopes), scopes=tuple(scopes))
 
 
 def _derived_event_id(request_id: str, purpose: str) -> str:

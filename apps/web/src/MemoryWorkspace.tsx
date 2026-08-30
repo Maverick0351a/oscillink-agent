@@ -2,9 +2,11 @@ import { Network, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { buildFoundationGraph, type FeatureState } from './foundationGraph'
+import ArtifactImportPanel from './ArtifactImportPanel'
 import MemoryCreatePanel from './MemoryCreatePanel'
 import MemoryGraph from './MemoryGraph'
 import MemoryInspector from './MemoryInspector'
+import ProposalQueue from './ProposalQueue'
 import SourceSyncPanel from './SourceSyncPanel'
 import {
   loadMemoryNode,
@@ -141,6 +143,7 @@ export default function MemoryWorkspace({
   const [reviewing, setReviewing] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [creationRefreshError, setCreationRefreshError] = useState<string | null>(null)
+  const [proposalRefreshKey, setProposalRefreshKey] = useState(0)
   const [query, setQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<MemoryCategory | ''>('')
   const [domainFilter, setDomainFilter] = useState<MemoryDomain | ''>('')
@@ -328,6 +331,12 @@ export default function MemoryWorkspace({
           <>
             <MemoryCreatePanel enabled={mutationsEnabled} onCreated={handleCreated} />
             <SourceSyncPanel enabled={mutationsEnabled} onSynchronized={handleSynchronized} />
+            <ArtifactImportPanel
+              enabled={mutationsEnabled}
+              targetRecordId={selectedId}
+              targetTitle={detail?.title ?? null}
+              onImported={() => setProposalRefreshKey((current) => current + 1)}
+            />
           </>
         ) : null}
         <div className="memory-projection-tabs" aria-label="Memory projection view">
@@ -404,6 +413,14 @@ export default function MemoryWorkspace({
 
       {creationRefreshError !== null ? (
         <div className="memory-notice error" role="alert">{creationRefreshError}</div>
+      ) : null}
+
+      {activeProjection === 'memory' ? (
+        <ProposalQueue
+          enabled={mutationsEnabled}
+          refreshKey={proposalRefreshKey}
+          onReviewed={() => setProposalRefreshKey((current) => current + 1)}
+        />
       ) : null}
 
       {unavailableMessage !== null && activeProjection === 'memory' ? (

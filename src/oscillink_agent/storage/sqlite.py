@@ -40,6 +40,10 @@ class InvalidEventError(ValueError):
     """Ledger ingress requires an exact validated Event value."""
 
 
+class EventConstraintError(ValueError):
+    """An event conflicts with a ledger-level uniqueness invariant."""
+
+
 class UnsupportedSchemaVersionError(ValueError):
     """The database schema is newer than this store understands."""
 
@@ -141,7 +145,7 @@ class SQLiteEventStore:
             ).fetchone()
             if duplicate_event is not None:
                 raise DuplicateEventError(f"event ID already exists: {event.id}") from None
-            raise
+            raise EventConstraintError("event violates a ledger uniqueness constraint") from None
         return event.id
 
     def stream(self, session_id: SessionId) -> Iterator[Event]:
@@ -153,6 +157,30 @@ class SQLiteEventStore:
             ORDER BY sequence
             """,
             (session_id,),
+        )
+        for event_id, encoded, expected_digest, expected_payload_hash in rows:
+            actual_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+            if actual_digest != expected_digest:
+                raise LedgerCorruptionError(f"event bytes changed after append: {event_id}")
+            try:
+                event = Event.model_validate_json(encoded)
+            except (TypeError, ValueError) as exc:
+                raise LedgerCorruptionError(
+                    f"persisted event is malformed: {event_id}"
+                ) from exc
+            if event.payload_hash != expected_payload_hash:
+                raise LedgerCorruptionError(f"payload hash changed after append: {event_id}")
+            yield event
+
+    def iter_all(self) -> Iterator[Event]:
+        """Replay the complete ledger in insertion order with integrity verification."""
+
+        rows = self._connection.execute(
+            """
+            SELECT event_id, event_json, event_sha256, payload_hash
+            FROM events
+            ORDER BY sequence
+            """
         )
         for event_id, encoded, expected_digest, expected_payload_hash in rows:
             actual_digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()

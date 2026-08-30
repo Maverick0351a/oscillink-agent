@@ -10,8 +10,9 @@ from fastapi import status as http_status
 from oscillink_agent.artifact_imports.contracts import (
     ArtifactImportRequest,
     ArtifactImportResponse,
+    ArtifactImportSourceCollection,
 )
-from oscillink_agent.artifact_imports.service import import_artifact
+from oscillink_agent.artifact_imports.service import import_artifact, list_import_sources
 from oscillink_agent.workspaces.contracts import LocalWorkspacePrincipal
 from oscillink_agent.workspaces.service import LocalWorkspaceAuth
 
@@ -26,6 +27,18 @@ def build_artifact_import_router(
     workspace_auth: LocalWorkspaceAuth,
 ) -> APIRouter:
     router = APIRouter()
+
+    @router.get(
+        "/api/v1/artifact-imports/sources",
+        response_model=ArtifactImportSourceCollection,
+    )
+    def get_artifact_import_sources(
+        _principal: Annotated[
+            LocalWorkspacePrincipal,
+            Depends(workspace_auth.require_principal),
+        ],
+    ) -> ArtifactImportSourceCollection:
+        return list_import_sources(import_scopes)
 
     @router.post(
         "/api/v1/artifact-imports",

@@ -86,10 +86,70 @@ function stubReadyMemory(
 ) {
   let candidateAuthority = 'candidate'
   let indexRequests = 0
+  let importedProposal = false
   const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input)
     let payload: unknown
-    if (path.endsWith('/sources/obsidian/sync') && init?.method === 'POST') {
+    if (path.endsWith('/artifact-imports/sources')) {
+      payload = {
+        schema_version: 1,
+        count: 1,
+        scopes: [
+          {
+            scope_id: 'user_selection',
+            state: 'configured',
+            targets: [
+              { target: 'evidence.md', source_name: 'evidence.md', logical_bytes: 19 },
+            ],
+          },
+        ],
+      }
+    }
+    else if (path.endsWith('/memory-proposals')) {
+      payload = {
+        schema_version: 1,
+        count: importedProposal ? 1 : 0,
+        proposals: importedProposal
+          ? [
+              {
+                proposal_id: 'evt_01J00000000000000000000501',
+                state: 'pending_review',
+                target_record_id: 'mem_01J00000000000000000000001',
+                artifact_ref: `sha256:${'c'.repeat(64)}`,
+                source_name: 'evidence.md',
+                created_at: '2026-08-29T22:00:00Z',
+                decision_event_id: null,
+                decided_at: null,
+                decided_by: null,
+              },
+            ]
+          : [],
+      }
+    }
+    else if (path.endsWith('/artifact-imports') && init?.method === 'POST') {
+      importedProposal = true
+      payload = {
+        schema_version: 1,
+        state: 'imported',
+        event_id: 'evt_01J00000000000000000000500',
+        artifact: {
+          artifact_ref: `sha256:${'c'.repeat(64)}`,
+          source_scope_id: 'user_selection',
+          source_name: 'evidence.md',
+          media_type: 'text/markdown',
+          logical_bytes: 19,
+          unique_physical_bytes: 19,
+          deduplicated: false,
+        },
+        association: {
+          state: 'candidate',
+          review_state: 'pending_review',
+          target_record_id: 'mem_01J00000000000000000000001',
+          event_id: 'evt_01J00000000000000000000501',
+        },
+      }
+    }
+    else if (path.endsWith('/sources/obsidian/sync') && init?.method === 'POST') {
       payload = {
         schema_version: 1,
         state: 'synced',
@@ -358,6 +418,20 @@ describe('MemoryWorkspace', () => {
     expect(screen.getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
   })
 
+  it('imports configured evidence into a durable proposal without losing selection', async () => {
+    stubReadyMemory()
+    render(<MemoryWorkspace latticeState="ready" mutationsEnabled />)
+
+    await screen.findByRole('option', { name: 'evidence.md · 19 B' })
+    expect(await screen.findByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Import selected evidence' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm import' }))
+
+    expect(await screen.findByText('IMPORTED · PENDING REVIEW')).toBeInTheDocument()
+    expect(await screen.findByText('evidence.md')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Oscillink Agent' })).toBeInTheDocument()
+  })
+
   it('lets a human reject a candidate and reflects the terminal authority state', async () => {
     stubReadyMemory()
     render(<MemoryWorkspace latticeState="ready" />)
@@ -457,7 +531,7 @@ describe('MemoryWorkspace', () => {
       screen.getByRole('img', { name: 'System architecture memory map' }),
     ).toBeInTheDocument()
     expect(screen.getByText('ARCHITECTURE MEMORY · 0 ASSOCIATIONS')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
   })
 })

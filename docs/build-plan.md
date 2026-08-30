@@ -104,9 +104,9 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Approved-only lexical retrieval and context manifests | implemented | `src/oscillink_agent/retrieval/`, `src/oscillink_agent/context/` |
 | Fake and OpenAI-compatible provider chat | implemented | `src/oscillink_agent/providers/`, `src/oscillink_agent/chat/` |
 | Persisted run inspection | preview | Three-event runs work; multi-call/tool reconstruction is not implemented |
-| Governed file import | preview | Backend and adversarial tests exist; browser onboarding is not implemented |
+| Governed file import | implemented | Browser enumerates only configured portable targets and imports them through the bounded content-addressed backend |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
-| Browser memory creation, source sync and proposal review | preview | Native creation and confirmed source sync with durable accounting are implemented; browser import and proposal review remain |
+| Browser memory creation, source sync and proposal review | implemented | Native creation, confirmed source sync, configured-target import and ledger-backed terminal proposal decisions are implemented |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
 | Longitudinal evaluation and recovery package | planned | Required before private-pilot release |

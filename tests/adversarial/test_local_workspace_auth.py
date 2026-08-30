@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 
 import httpx
+import pytest
 
 from oscillink_agent.api import create_app
 from oscillink_agent.workspaces.service import LocalWorkspaceAuth
@@ -85,6 +86,47 @@ def test_anonymous_source_sync_fails_without_scanning_or_initializing_storage(
     )
 
     assert response.status_code == 401, response.json()
+    assert not data_root.exists()
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "payload", "headers"),
+    (
+        ("GET", "/api/v1/artifact-imports/sources", None, None),
+        ("GET", "/api/v1/memory-proposals", None, None),
+        (
+            "POST",
+            "/api/v1/memory-proposals/evt_01J00000000000000000000600/decisions",
+            {
+                "schema_version": 1,
+                "request_id": "evt_01J00000000000000000000601",
+                "observed_at": "2026-08-29T23:00:00Z",
+                "decision": "approved",
+            },
+            {"Idempotency-Key": "anonymous-proposal-decision"},
+        ),
+    ),
+)
+def test_anonymous_import_and_proposal_surfaces_fail_without_storage(
+    tmp_path: Path,
+    method: str,
+    path: str,
+    payload: dict[str, object] | None,
+    headers: dict[str, str] | None,
+) -> None:
+    data_root = tmp_path / "runtime"
+    source_root = tmp_path / "selected"
+    source_root.mkdir()
+    app = create_app(
+        data_root=data_root,
+        vault_root=None,
+        import_scopes={"user_selection": source_root},
+        workspace_credential="test-private-credential",
+    )
+
+    response = request(app, method, path, json=payload, headers=headers)
+
+    assert response.status_code == 401
     assert not data_root.exists()
 
 

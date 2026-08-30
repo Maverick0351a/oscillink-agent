@@ -42,6 +42,67 @@ def post_import(
     return asyncio.run(send())
 
 
+def get_import_sources(app: FastAPI) -> httpx.Response:
+    async def send() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            return await client.get(
+                "/api/v1/artifact-imports/sources",
+                headers={"Authorization": "Bearer oscillink-test-workspace-credential"},
+            )
+
+    return asyncio.run(send())
+
+
+def test_import_sources_expose_only_configured_portable_targets(tmp_path: Path) -> None:
+    source_root = tmp_path / "selected"
+    source_root.mkdir()
+    (source_root / "evidence.txt").write_text("evidence", encoding="utf-8")
+    (source_root / "ignored.py").write_text("pass", encoding="utf-8")
+    unavailable_root = tmp_path / "missing"
+    data_root = tmp_path / "runtime"
+    app = create_app(
+        data_root=data_root,
+        vault_root=None,
+        import_scopes={
+            "user_selection": source_root,
+            "offline_selection": unavailable_root,
+        },
+    )
+
+    response = get_import_sources(app)
+
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "schema_version": 1,
+        "count": 2,
+        "scopes": [
+            {
+                "scope_id": "offline_selection",
+                "state": "unavailable",
+                "targets": [],
+            },
+            {
+                "scope_id": "user_selection",
+                "state": "configured",
+                "targets": [
+                    {
+                        "target": "evidence.txt",
+                        "source_name": "evidence.txt",
+                        "logical_bytes": len(b"evidence"),
+                    }
+                ],
+            },
+        ],
+    }
+    assert str(source_root) not in response.text
+    assert str(unavailable_root) not in response.text
+    assert not data_root.exists()
+
+
 def test_import_api_publishes_scoped_file_and_sanitized_event(tmp_path: Path) -> None:
     source_root = tmp_path / "selected"
     source_root.mkdir()

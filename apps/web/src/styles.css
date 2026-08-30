@@ -1377,6 +1377,61 @@ button:active:not(:disabled) {
 .source-sync-result p { color: var(--text-soft); }
 .source-sync-panel .error { grid-column: 1 / -1; color: var(--danger); }
 
+.artifact-import-panel,
+.proposal-queue {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  background: rgb(16 21 30 / 72%);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
+.artifact-import-panel { grid-column: 1 / -1; grid-template-columns: minmax(180px, 1fr) auto; }
+.proposal-queue { margin-top: 10px; }
+
+.artifact-import-heading,
+.proposal-queue-heading {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  align-items: center;
+  color: var(--cyan);
+}
+
+.artifact-import-heading div,
+.proposal-queue-heading div { display: grid; gap: 2px; }
+.artifact-import-heading strong,
+.proposal-queue-heading strong { font-family: var(--mono); font-size: 9px; letter-spacing: 0.7px; }
+.artifact-import-heading span,
+.proposal-queue-heading span { color: var(--text-dim); font-family: var(--mono); font-size: 8px; }
+
+.artifact-import-panel label { display: grid; gap: 5px; color: var(--text-dim); font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+.artifact-import-panel select { min-height: 34px; padding: 0 9px; color: var(--text-soft); background: #070b11; border: 1px solid var(--line); border-radius: 4px; }
+.artifact-import-panel > button { align-self: end; min-height: 34px; }
+.artifact-import-confirmation,
+.proposal-confirmation { display: flex; grid-column: 1 / -1; gap: 7px; align-items: center; flex-wrap: wrap; }
+.artifact-import-confirmation p,
+.proposal-confirmation p { flex: 1 1 260px; color: var(--text-soft); font-size: 10px; }
+.artifact-import-panel .success,
+.artifact-import-panel .error,
+.artifact-import-panel .hint,
+.proposal-queue .error,
+.proposal-queue .hint { grid-column: 1 / -1; }
+.artifact-import-panel .success { color: var(--cyan); }
+.artifact-import-panel .error,
+.proposal-queue .error { color: var(--danger); }
+
+.proposal-list { display: grid; gap: 7px; }
+.proposal-card { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px; background: rgb(5 9 14 / 72%); border: 1px solid var(--line); border-radius: 4px; }
+.proposal-card > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.proposal-card strong { color: var(--text-soft); font-size: 10px; }
+.proposal-card span { overflow: hidden; color: var(--text-dim); font-family: var(--mono); font-size: 8px; text-overflow: ellipsis; }
+.proposal-state { color: var(--amber) !important; letter-spacing: 0.6px; }
+.proposal-card[data-state="approved"] .proposal-state { color: var(--cyan) !important; }
+.proposal-card[data-state="rejected"] .proposal-state { color: var(--danger) !important; }
+.proposal-actions { display: flex; gap: 6px; }
+
 .memory-projection-tabs {
   display: inline-flex;
   align-self: flex-start;
@@ -2799,6 +2854,15 @@ button:active:not(:disabled) {
     grid-column: 1;
     flex-wrap: wrap;
     justify-content: flex-start;
+  }
+
+  .artifact-import-panel,
+  .proposal-card {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-actions {
+    flex-wrap: wrap;
   }
 
   .memory-projection-tabs {
