@@ -23,6 +23,7 @@ artifacts/
 indexes/
 private/
 hidden/
+evaluations/reports/
 *.pem
 *.key
 *.p12

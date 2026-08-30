@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "suite_id": "public-smoke",
+  "suite_version": "0.1.0",
+  "fixture_path": "../fixtures/public-smoke.json",
+  "fixture_hash": "sha256:3a150d061fb1d3f578f608bbc1db8c548e53520b011adc32abc05c750fb4620d",
+  "conditions": [
+    "no_memory",
+    "raw_transcript",
+    "generated_summary",
+    "approved_lexical"
+  ],
+  "budget": {
+    "max_context_units": 128,
+    "max_output_tokens": 64,
+    "max_seconds": 5
+  }
+}
