@@ -16,8 +16,10 @@ Oscillink answers these problems with stable product-owned memory identities, im
 ## Current maturity
 
 Oscillink Agent is a governed-agent `v0.2.0-alpha` release candidate. The
-browser-complete governed-memory journey is executable from an empty data root;
-the active milestone is a crash-safe provider and governed-tool trajectory.
+browser-complete governed-memory journey, crash-safe provider/tool trajectory,
+and versioned workspace recovery path are executable from an empty data root.
+The active milestone is a reproducible private-pilot deployment and measured
+longitudinal value.
 
 The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The authenticated browser exposes that synchronization only as an explicit confirmed action and reports durable created/revised/unchanged/missing/issue accounting without revealing the configured source path. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
@@ -25,8 +27,8 @@ The authenticated browser enumerates only server-configured portable import targ
 
 `scripts/milestone_one_acceptance.py` exercises the complete authenticated journey in disposable state: native creation, explicit source sync, configured-target import, separate relationship and memory approval, approved-only chat context, immutable citation/run inspection, restart recovery, artifact verification, sanitization, and cleanup.
 
-The current critical path is: crash-safe multi-call provider/tool trajectories, then
-export/restore and longitudinal evaluation for a private pilot. Semantic
+The current critical path is: verify the private-pilot deployment and then run
+longitudinal evaluation against transcript and summary baselines. Semantic
 retrieval, terminal execution, training, multi-agent orchestration and cloud
 scale remain deferred until those finish lines pass.
 
@@ -60,6 +62,25 @@ Native memory + optional connectors
 ## Development
 
 The project uses Python 3.11, `uv`, pytest, Ruff, mypy, Pydantic v2, SQLite/FTS5, FastAPI, React, TypeScript, Vite, Vitest, and an application-owned projected-3D Canvas renderer.
+
+### Launch a bounded private pilot
+
+Build the browser application and run the single-process launcher:
+
+```bash
+npm --prefix apps/web ci
+npm --prefix apps/web run build
+PYTHONPATH= .venv/Scripts/python.exe scripts/launch_private_pilot.py \
+  --host 127.0.0.1 \
+  --port 8765 \
+  --data-dir "$HOME/AppData/Local/oscillink-agent-private/workspace" \
+  --credential-file "$HOME/AppData/Local/oscillink-agent-private-runtime/workspace.credential" \
+  --frontend-dist apps/web/dist
+```
+
+See [`docs/private-pilot-runbook.md`](docs/private-pilot-runbook.md) for health
+checks, provider setup, private-network binding, shutdown, credential rotation,
+backup, restore, and failure recovery.
 
 ### Launch the Phase 1 interface
 
@@ -125,6 +146,7 @@ The implementation plan is in [`docs/build-plan.md`](docs/build-plan.md).
 Frontend and appearance boundaries are in [`docs/frontend-architecture.md`](docs/frontend-architecture.md) and [`docs/appearance-contract.md`](docs/appearance-contract.md).
 Reviewed indexing, category colors and subject-domain labels are specified in [`docs/memory-contract.md`](docs/memory-contract.md).
 Versioned canonical export, atomic restore, rollback and deletion semantics are documented in [`docs/workspace-recovery.md`](docs/workspace-recovery.md).
+Private-pilot startup, health, shutdown and recovery are documented in [`docs/private-pilot-runbook.md`](docs/private-pilot-runbook.md).
 
 ## Governed workspace terminal
 

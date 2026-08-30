@@ -8,12 +8,14 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from oscillink_agent import __version__
 from oscillink_agent.artifact_imports.routes import build_artifact_import_router
 from oscillink_agent.capabilities.routes import build_capability_router
 from oscillink_agent.chat.routes import build_chat_router
+from oscillink_agent.health.routes import build_health_router
 from oscillink_agent.memory.routes import build_memory_router
 from oscillink_agent.proposals.routes import build_proposal_router
 from oscillink_agent.providers.base import ChatProvider
@@ -57,6 +59,7 @@ def create_app(
     workspace_actor_id: str = "human_local_user",
     allowed_origins: tuple[str, ...] | None = None,
     trusted_hosts: tuple[str, ...] | None = None,
+    static_root: Path | None = None,
 ) -> FastAPI:
     """Create an API without initializing or mutating durable storage."""
 
@@ -102,6 +105,13 @@ def create_app(
         actor_id=workspace_actor_id,
     )
     application.include_router(
+        build_health_router(
+            root,
+            provider=configured_chat_provider,
+            configured_scope_count=len(configured_capability_scopes),
+        )
+    )
+    application.include_router(
         build_status_router(root, workspace_auth=workspace_auth)
     )
     application.include_router(build_workspace_router(root, workspace_auth))
@@ -138,6 +148,12 @@ def create_app(
     application.include_router(
         build_proposal_router(root, workspace_auth=workspace_auth)
     )
+    if static_root is not None:
+        application.mount(
+            "/",
+            StaticFiles(directory=static_root, html=True, check_dir=True),
+            name="private-pilot-ui",
+        )
     return application
 
 

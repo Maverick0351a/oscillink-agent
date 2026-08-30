@@ -93,6 +93,28 @@ class OpenAICompatibleProvider:
             },
         )
 
+    def probe_readiness(self) -> None:
+        """Perform one bounded, non-generating provider reachability check."""
+
+        headers: dict[str, str] = {}
+        if self.api_key is not None:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        request = Request(
+            f"{self.base_url.rstrip('/')}/models",
+            headers=headers,
+            method="GET",
+        )
+        try:
+            with urlopen(  # noqa: S310
+                request,
+                timeout=min(self.timeout_seconds, 2.0),
+            ) as response:
+                response.read(1)
+        except TimeoutError as error:
+            raise ProviderTimeoutError("provider readiness probe timed out") from error
+        except (HTTPError, URLError, OSError) as error:
+            raise ProviderRequestError("provider readiness probe failed") from error
+
     def generate(
         self,
         *,

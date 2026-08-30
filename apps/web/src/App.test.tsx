@@ -195,6 +195,45 @@ describe('Oscillink Agent shell', () => {
     expect(screen.getByText('WORKSPACE AUTHENTICATION REQUIRED')).toBeInTheDocument()
   })
 
+  it('explains the next human action when the workspace is locked', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/api/v1/status')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...statusResponse,
+          workspace_auth: { state: 'locked' },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return appFetch(input)
+    }))
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Unlock your workspace' })).toBeInTheDocument()
+    expect(screen.getByText(/Paste the credential created by the private-pilot launcher/)).toBeInTheDocument()
+  })
+
+  it('guides a new workspace to add trusted memory before chatting', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (String(input).endsWith('/api/v1/status')) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ...statusResponse,
+          storage: {
+            ...statusResponse.storage,
+            memory: { state: 'not_initialized', record_count: 0 },
+          },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return appFetch(input)
+    }))
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Add trusted memory' })).toBeInTheDocument()
+    expect(screen.getByText(/Approved memory is the evidence the agent may use/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Add trusted memory' }))
+    expect(await screen.findByRole('region', { name: 'Memory workspace controls' })).toBeInTheDocument()
+  })
+
   it('unlocks the local workspace with an in-memory credential', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation(
       (input: RequestInfo | URL, init?: RequestInit) => {
@@ -354,6 +393,8 @@ describe('Oscillink Agent shell', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
     expect(await screen.findByText('AWAITING HUMAN APPROVAL')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Review requested access' })).toBeInTheDocument()
+    expect(screen.getByText(/The agent is paused/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Approve file read' }))
 
     expect(await screen.findByText('TOOL LOOP SUCCEEDED')).toBeInTheDocument()

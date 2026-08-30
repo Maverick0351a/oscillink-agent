@@ -112,6 +112,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Governed one-tool agent loop | implemented | One approved `file.read` produces a portable external-untrusted observation before a no-tools follow-up provider dispatch; denied, expired, mismatched, reused and file-failure states remain inspectable without host-path exposure |
 | Browser capability approval and complete run inspection | implemented | The authenticated workspace shows the exact portable authority envelope, distinct decision outcomes, refreshed semantic trajectories and separate exact trajectory JSON with stale-result guards |
 | Versioned workspace export and atomic restore | implemented | Authenticated human routes select only server-managed export IDs; manifests hash canonical databases/artifacts, migrations are ordered with verified backups, and corrupt restores leave active state untouched |
+| Bounded private-pilot launch and health | implemented | One Windows-first process serves the built UI and API with an out-of-data-root rotated credential, explicit bind/origin/host policy, non-mutating liveness, typed component readiness, bounded provider probing, and graceful shutdown |
+| Human-clear next-action guidance | implemented | The agent workspace prioritizes unlock, trusted-memory setup, chat, and pending approval in plain language while preserving exact governed detail below |
 | Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
@@ -122,8 +124,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 ### Active maturity milestones
 
 1. **Browser-complete governed memory journey — release candidate complete:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
-2. **Crash-safe provider and governed tool trajectory — active:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
-3. **Reproducible private pilot and measured value:** add versioned export/restore, a bounded deployment path and a longitudinal evaluation against transcript and summary baselines.
+2. **Crash-safe provider and governed tool trajectory — complete:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
+3. **Reproducible private pilot and measured value — active:** verify versioned export/restore and the bounded deployment path, then add longitudinal evaluation against transcript and summary baselines.
 
 Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-range gates, and remain demoable without fabricated capability.
 

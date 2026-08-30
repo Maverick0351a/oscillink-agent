@@ -24,6 +24,7 @@ import {
   type PendingToolRequestResponse,
 } from './chatApi'
 import MemoryWorkspace from './MemoryWorkspace'
+import NextActionPanel from './NextActionPanel'
 import RunInspector from './RunInspector'
 import WorkspaceTerminal from './WorkspaceTerminal'
 import { setWorkspaceCredential } from './workspaceAuth'
@@ -79,6 +80,8 @@ export default function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const activeRunKey = useRef<string | null>(null)
+  const credentialInputRef = useRef<HTMLInputElement | null>(null)
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -293,6 +296,7 @@ export default function App() {
             <label htmlFor="workspace-credential">Local workspace credential</label>
             <input
               id="workspace-credential"
+              ref={credentialInputRef}
               type="password"
               autoComplete="off"
               value={credentialInput}
@@ -317,6 +321,17 @@ export default function App() {
             />
           ) : (
             <div className="unified-agent-workspace">
+            {status ? (
+              <NextActionPanel
+                workspaceState={status.workspace_auth.state}
+                memoryCount={status.storage.memory.record_count}
+                pendingApproval={pendingToolRequest !== null}
+                hasAnswer={chatResponse !== null}
+                onFocusCredential={() => credentialInputRef.current?.focus()}
+                onOpenMemory={() => setActiveView('memory')}
+                onFocusChat={() => chatInputRef.current?.focus()}
+              />
+            ) : null}
             <div className={`chat-operations-column ${terminalOpen ? 'has-terminal' : ''}`}>
             <section className="chat-view" aria-label="Agent chat">
               <div className="channel-header">
@@ -416,6 +431,7 @@ export default function App() {
                 <label className="sr-only" htmlFor="chat-message">Message Oscillink Agent</label>
                 <textarea
                   id="chat-message"
+                  ref={chatInputRef}
                   aria-label="Message Oscillink Agent"
                   placeholder={chatReady ? 'Ask using approved product memory.' : 'Chat unlocks when the governed runtime is connected.'}
                   disabled={!chatReady}

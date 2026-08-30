@@ -2335,10 +2335,87 @@ button:active:not(:disabled) {
 .unified-agent-workspace {
   display: grid;
   grid-template-columns: minmax(430px, 1.15fr) minmax(390px, 0.85fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   height: 100%;
   min-height: 0;
   padding: 12px;
+}
+
+.next-action-panel {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px 15px;
+  color: var(--cyan);
+  background: linear-gradient(105deg, rgb(54 241 205 / 8%), rgb(7 12 18 / 92%));
+  border: 1px solid rgb(54 241 205 / 28%);
+  border-radius: 7px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 20%);
+}
+
+.next-action-panel.attention {
+  color: var(--amber);
+  background: linear-gradient(105deg, rgb(243 189 104 / 9%), rgb(7 12 18 / 92%));
+  border-color: rgb(243 189 104 / 32%);
+}
+
+.next-action-panel > div {
+  min-width: 0;
+}
+
+.next-action-panel span {
+  display: block;
+  margin-bottom: 3px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.next-action-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 560;
+  letter-spacing: -0.2px;
+  text-wrap: balance;
+}
+
+.next-action-panel p {
+  margin: 3px 0 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.next-action-panel button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  color: var(--void);
+  background: var(--cyan);
+  border: 0;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+
+.next-action-panel button:hover {
+  opacity: 0.9;
+}
+
+.next-action-panel button:active {
+  transform: scale(0.96);
 }
 
 .chat-operations-column {
@@ -2825,6 +2902,16 @@ button:active:not(:disabled) {
   .memory-view,
   .terminal-view {
     padding: 21px 16px 18px;
+  }
+
+  .next-action-panel {
+    grid-template-columns: 22px minmax(0, 1fr);
+    padding: 13px;
+  }
+
+  .next-action-panel button {
+    grid-column: 1 / -1;
+    min-height: 44px;
   }
 
   .channel-header {
