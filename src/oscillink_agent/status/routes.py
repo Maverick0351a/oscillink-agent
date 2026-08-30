@@ -33,7 +33,7 @@ def build_status_router(
             },
             features={
                 "chat": "ready",
-                "capability_broker": "preview",
+                "capability_broker": "ready",
                 "memory_lattice": (
                     "ready" if memory_status.state == "ready" else "preview"
                 ),

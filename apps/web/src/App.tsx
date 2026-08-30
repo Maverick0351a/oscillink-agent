@@ -8,15 +8,20 @@ import {
   Terminal,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import AgentAvatar from './AgentAvatar'
+import CapabilityApprovalPanel from './CapabilityApprovalPanel'
 import {
   createChatSessionId,
+  decideCapabilityRequest,
   inspectChatRun,
+  isDeniedCapabilityDecision,
+  isPendingToolRequest,
   sendChatMessage,
   type ChatMessageResponse,
   type ChatRunInspectionResponse,
+  type PendingToolRequestResponse,
 } from './chatApi'
 import MemoryWorkspace from './MemoryWorkspace'
 import RunInspector from './RunInspector'
@@ -64,6 +69,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<'agent' | 'memory'>('agent')
   const [chatMessage, setChatMessage] = useState('')
   const [chatResponse, setChatResponse] = useState<ChatMessageResponse | null>(null)
+  const [pendingToolRequest, setPendingToolRequest] = useState<PendingToolRequestResponse | null>(null)
   const [chatError, setChatError] = useState<string | null>(null)
   const [chatSubmitting, setChatSubmitting] = useState(false)
   const [runInspection, setRunInspection] = useState<ChatRunInspectionResponse | null>(null)
@@ -72,6 +78,7 @@ export default function App() {
   const [credentialInput, setCredentialInput] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
+  const activeRunKey = useRef<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -135,8 +142,24 @@ export default function App() {
     setChatError(null)
     try {
       const response = await sendChatMessage(chatSessionId, message)
-      setChatResponse(response)
-      setRunInspection(null)
+      const runKey = `${response.session_id}:${response.run_id}`
+      activeRunKey.current = runKey
+      if (isPendingToolRequest(response)) {
+        setPendingToolRequest(response)
+        setChatResponse(null)
+        try {
+          const inspection = await inspectChatRun(response.session_id, response.run_id)
+          if (activeRunKey.current === runKey) setRunInspection(inspection)
+        } catch {
+          if (activeRunKey.current === runKey) {
+            setChatError('The pending governed run could not be inspected.')
+          }
+        }
+      } else {
+        setPendingToolRequest(null)
+        setChatResponse(response)
+        setRunInspection(null)
+      }
       setChatMessage('')
     } catch {
       setChatError('The governed chat run could not be completed.')
@@ -147,15 +170,43 @@ export default function App() {
 
   async function inspectPersistedRun() {
     if (!chatResponse || runInspecting) return
+    const runKey = `${chatResponse.session_id}:${chatResponse.run_id}`
     setRunInspecting(true)
     setChatError(null)
     try {
-      setRunInspection(await inspectChatRun(chatResponse.session_id, chatResponse.run_id))
+      const inspection = await inspectChatRun(chatResponse.session_id, chatResponse.run_id)
+      if (activeRunKey.current === runKey) setRunInspection(inspection)
     } catch {
       setChatError('The persisted run could not be inspected.')
     } finally {
       setRunInspecting(false)
     }
+  }
+
+  async function decidePendingCapability(
+    decision: 'approved' | 'denied',
+  ): Promise<'succeeded' | 'denied'> {
+    if (!pendingToolRequest) throw new Error('no pending capability')
+    const selected = pendingToolRequest
+    const runKey = `${selected.session_id}:${selected.run_id}`
+    const result = await decideCapabilityRequest(selected, decision)
+    if (activeRunKey.current !== runKey) {
+      return isDeniedCapabilityDecision(result) ? 'denied' : 'succeeded'
+    }
+    if (isDeniedCapabilityDecision(result)) {
+      setChatResponse(null)
+    } else {
+      setChatResponse(result)
+    }
+    try {
+      const inspection = await inspectChatRun(selected.session_id, selected.run_id)
+      if (activeRunKey.current === runKey) setRunInspection(inspection)
+    } catch {
+      if (activeRunKey.current === runKey) {
+        setChatError('The capability decision was recorded, but run refresh failed.')
+      }
+    }
+    return isDeniedCapabilityDecision(result) ? 'denied' : 'succeeded'
   }
 
   return (
@@ -322,6 +373,12 @@ export default function App() {
                     </div>
                   </div>
                 </article>
+                {pendingToolRequest ? (
+                  <CapabilityApprovalPanel
+                    pending={pendingToolRequest}
+                    onDecision={decidePendingCapability}
+                  />
+                ) : null}
                 {chatResponse ? (
                   <article className="chat-run-message" aria-label="Governed chat response">
                     <header>

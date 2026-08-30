@@ -170,8 +170,14 @@ def create_chat_message(
                 run_id=run_id,
                 task_id=persisted.reconstruction.task_id,
                 provider=projection,
+                subject_actor_id=tool_event.actor.id,
                 tool_request_event_id=tool_event.id,
                 request=tool_request,
+                allowed_extensions=(
+                    (Path(tool_request.target).suffix,)
+                    if Path(tool_request.target).suffix
+                    else ()
+                ),
             )
         if persisted.reconstruction.state is RunState.FAILED:
             failure_kind = persisted.events[-1].payload.get("failure_kind")
@@ -419,8 +425,14 @@ def create_chat_message(
             run_id=run_id,
             task_id=task_id,
             provider=provider,
+            subject_actor_id=execution_identity.actor_id,
             tool_request_event_id=tool_request_id,
             request=provider_result.request,
+            allowed_extensions=(
+                (Path(provider_result.request.target).suffix,)
+                if Path(provider_result.request.target).suffix
+                else ()
+            ),
         )
     answer = provider_result.answer
     response = ChatMessageResponse(

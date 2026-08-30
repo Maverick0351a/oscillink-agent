@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -17,7 +17,7 @@ const statusResponse = {
   },
   features: {
     chat: 'ready',
-    capability_broker: 'preview',
+    capability_broker: 'ready',
     memory_lattice: 'ready',
     appearance: 'preview',
     workspace_terminal: 'preview',
@@ -114,6 +114,19 @@ function appFetch(input: RequestInfo | URL) {
           payload: { answer: 'Grounded in approved memory: Oscillink Agent.' },
         },
       ],
+      reconstruction: {
+        schema_version: 1,
+        session_id: 'ses_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        run_id: 'run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        task_id: 'tsk_01ARZ3NDEKTSV4RRFFQ69G5FC1',
+        state: 'completed',
+        pending_action: null,
+        steps: [],
+        context_manifest_ref: 'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+        final_response_event_id: 'evt_01ARZ3NDEKTSV4RRFFQ69G5FC3',
+        model_call_count: 1,
+        tool_call_count: 0,
+      },
       context_manifest: persistedContextManifest,
     }
   } else if (path.endsWith('/chat/messages')) {
@@ -270,10 +283,12 @@ describe('Oscillink Agent shell', () => {
     const runInspector = await screen.findByRole('complementary', { name: 'Run inspector' })
     expect(within(runInspector).getByText('3 PERSISTED EVENTS')).toBeInTheDocument()
     expect(within(runInspector).getByText('MODEL CALL')).toBeInTheDocument()
-    expect(
-      within(runInspector).getByRole('region', { name: 'Provider execution identity' }),
-    ).toHaveTextContent('FAKE · deterministic-v1')
-    expect(within(runInspector).getByText(/sha256:e{64}/)).toBeInTheDocument()
+    const providerIdentity = within(runInspector).getByRole(
+      'region',
+      { name: 'Provider execution identity' },
+    )
+    expect(providerIdentity).toHaveTextContent('FAKE · deterministic-v1')
+    expect(within(providerIdentity).getByText(/sha256:e{64}/)).toBeInTheDocument()
     expect(within(runInspector).getByText('Oscillink Agent')).toBeInTheDocument()
     expect(within(runInspector).getByText('RANK 1 · SCORE 4')).toBeInTheDocument()
     expect(
@@ -284,6 +299,198 @@ describe('Oscillink Agent shell', () => {
     expect(fetch).toHaveBeenCalledWith(
       '/api/v1/chat/sessions/ses_01ARZ3NDEKTSV4RRFFQ69G5FC1/runs/run_01ARZ3NDEKTSV4RRFFQ69G5FC1',
       { headers: {} },
+    )
+  })
+
+  it('approves an exact pending file request and refreshes its persisted trajectory', async () => {
+    const pending = {
+      schema_version: 1,
+      state: 'awaiting_approval',
+      session_id: 'ses_01J00000000000000000000050',
+      run_id: 'run_01J00000000000000000000050',
+      task_id: 'tsk_01J00000000000000000000050',
+      provider: { kind: 'fake', model: 'deterministic-v1' },
+      subject_actor_id: 'model_fake_deterministic_v1',
+      tool_request_event_id: 'evt_01J00000000000000000000050',
+      request: {
+        schema_version: 1,
+        operation: 'file.read',
+        scope_id: 'workspace_a',
+        target: 'docs/evidence.txt',
+        max_bytes: 4096,
+      },
+      valid_for_seconds: 60,
+      allowed_extensions: ['.txt'],
+      network_allowed: false,
+    }
+    const completed = {
+      schema_version: 1,
+      session_id: pending.session_id,
+      run_id: pending.run_id,
+      task_id: pending.task_id,
+      provider: pending.provider,
+      answer: 'Governed file loop complete.',
+      citations: [],
+      context_manifest: persistedContextManifest,
+    }
+    let inspectionCount = 0
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      if (path.endsWith('/chat/messages')) {
+        return Promise.resolve(new Response(JSON.stringify(pending), { status: 202 }))
+      }
+      if (path.includes('/api/v1/capabilities/')) {
+        return Promise.resolve(new Response(JSON.stringify(completed), { status: 200 }))
+      }
+      if (path.includes('/chat/sessions/')) inspectionCount += 1
+      return appFetch(input)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<App />)
+    await screen.findByText('API ONLINE')
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message Oscillink Agent' }), {
+      target: { value: 'Use one governed file.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+    expect(await screen.findByText('AWAITING HUMAN APPROVAL')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve file read' }))
+
+    expect(await screen.findByText('TOOL LOOP SUCCEEDED')).toBeInTheDocument()
+    expect(screen.getByText('Governed file loop complete.')).toBeInTheDocument()
+    expect(inspectionCount).toBe(2)
+    expect(screen.getByText('Exact trajectory JSON')).toBeInTheDocument()
+  })
+
+  it('does not let a stale approval result replace a newly selected run', async () => {
+    const pending = {
+      schema_version: 1,
+      state: 'awaiting_approval',
+      session_id: 'ses_01J00000000000000000000051',
+      run_id: 'run_01J00000000000000000000051',
+      task_id: 'tsk_01J00000000000000000000051',
+      provider: { kind: 'fake', model: 'deterministic-v1' },
+      subject_actor_id: 'model_fake_deterministic_v1',
+      tool_request_event_id: 'evt_01J00000000000000000000051',
+      request: {
+        schema_version: 1,
+        operation: 'file.read',
+        scope_id: 'workspace_a',
+        target: 'docs/first.txt',
+        max_bytes: 1024,
+      },
+      valid_for_seconds: 60,
+      allowed_extensions: ['.txt'],
+      network_allowed: false,
+    }
+    const firstCompleted = {
+      schema_version: 1,
+      session_id: pending.session_id,
+      run_id: pending.run_id,
+      task_id: pending.task_id,
+      provider: pending.provider,
+      answer: 'STALE FIRST RUN ANSWER',
+      citations: [],
+      context_manifest: persistedContextManifest,
+    }
+    const secondCompleted = {
+      ...firstCompleted,
+      run_id: 'run_01J00000000000000000000052',
+      answer: 'CURRENT SECOND RUN ANSWER',
+    }
+    let chatCount = 0
+    let resolveDecision!: (response: Response) => void
+    const decisionPromise = new Promise<Response>((resolve) => {
+      resolveDecision = resolve
+    })
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      if (path.endsWith('/chat/messages')) {
+        chatCount += 1
+        const payload = chatCount === 1 ? pending : secondCompleted
+        return Promise.resolve(new Response(JSON.stringify(payload), { status: chatCount === 1 ? 202 : 200 }))
+      }
+      if (path.includes('/api/v1/capabilities/')) return decisionPromise
+      return appFetch(input)
+    }))
+    render(<App />)
+    await screen.findByText('API ONLINE')
+    const composer = screen.getByRole('textbox', { name: 'Message Oscillink Agent' })
+
+    fireEvent.change(composer, { target: { value: 'First run.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve file read' }))
+    fireEvent.change(composer, { target: { value: 'Second run.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+    expect(await screen.findByText('CURRENT SECOND RUN ANSWER')).toBeInTheDocument()
+
+    await act(async () => {
+      resolveDecision(new Response(JSON.stringify(firstCompleted), { status: 200 }))
+      await decisionPromise
+    })
+    expect(screen.queryByText('STALE FIRST RUN ANSWER')).not.toBeInTheDocument()
+    expect(screen.getByText('CURRENT SECOND RUN ANSWER')).toBeInTheDocument()
+  })
+
+  it('keeps a successful capability result when trajectory refresh fails', async () => {
+    const pending = {
+      schema_version: 1,
+      state: 'awaiting_approval',
+      session_id: 'ses_01J00000000000000000000053',
+      run_id: 'run_01J00000000000000000000053',
+      task_id: 'tsk_01J00000000000000000000053',
+      provider: { kind: 'fake', model: 'deterministic-v1' },
+      subject_actor_id: 'model_fake_deterministic_v1',
+      tool_request_event_id: 'evt_01J00000000000000000000053',
+      request: {
+        schema_version: 1,
+        operation: 'file.read',
+        scope_id: 'workspace_a',
+        target: 'docs/refresh.txt',
+        max_bytes: 1024,
+      },
+      valid_for_seconds: 60,
+      allowed_extensions: ['.txt'],
+      network_allowed: false,
+    }
+    const completed = {
+      schema_version: 1,
+      session_id: pending.session_id,
+      run_id: pending.run_id,
+      task_id: pending.task_id,
+      provider: pending.provider,
+      answer: 'Decision succeeded before refresh failed.',
+      citations: [],
+      context_manifest: persistedContextManifest,
+    }
+    let inspections = 0
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const path = String(input)
+      if (path.endsWith('/chat/messages')) {
+        return Promise.resolve(new Response(JSON.stringify(pending), { status: 202 }))
+      }
+      if (path.includes('/api/v1/capabilities/')) {
+        return Promise.resolve(new Response(JSON.stringify(completed), { status: 200 }))
+      }
+      if (path.includes('/chat/sessions/')) {
+        inspections += 1
+        if (inspections > 1) return Promise.reject(new Error('refresh failed'))
+      }
+      return appFetch(input)
+    }))
+    render(<App />)
+    await screen.findByText('API ONLINE')
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message Oscillink Agent' }), {
+      target: { value: 'Refresh failure run.' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve file read' }))
+
+    expect(await screen.findByText('TOOL LOOP SUCCEEDED')).toBeInTheDocument()
+    expect(screen.getByText('Decision succeeded before refresh failed.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The capability decision was recorded, but run refresh failed.',
     )
   })
 

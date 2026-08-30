@@ -64,6 +64,7 @@ export default function RunInspector({ inspection, onClose }: RunInspectorProps)
         <div className="run-inspector-section-title">
           <Activity size={15} aria-hidden="true" />
           <strong>{inspection.events.length} PERSISTED EVENTS</strong>
+          <span>{label(inspection.reconstruction.state)}</span>
         </div>
         <ol className="run-event-timeline">
           {inspection.events.map((event, index) => (
@@ -71,10 +72,16 @@ export default function RunInspector({ inspection, onClose }: RunInspectorProps)
               <div className="run-event-index">{String(index + 1).padStart(2, '0')}</div>
               <div>
                 <header>
-                  <strong>{label(event.event_type)}</strong>
+                  <strong>
+                    {label(
+                      typeof event.payload.operation === 'string'
+                        ? event.payload.operation
+                        : event.event_type,
+                    )}
+                  </strong>
                   <time>{event.observed_at}</time>
                 </header>
-                <p>{label(event.actor.type)} · {event.actor.id}</p>
+                <p>{label(event.event_type)} · {label(event.actor.type)} · {event.actor.id}</p>
                 <code>{event.id}</code>
                 <dl>
                   <div>
@@ -146,6 +153,13 @@ export default function RunInspector({ inspection, onClose }: RunInspectorProps)
       <details className="exact-manifest-json">
         <summary><FileJson size={14} aria-hidden="true" /> Exact manifest JSON</summary>
         <pre>{JSON.stringify(manifest, null, 2)}</pre>
+      </details>
+      <details className="exact-manifest-json">
+        <summary><FileJson size={14} aria-hidden="true" /> Exact trajectory JSON</summary>
+        <pre>{JSON.stringify({
+          reconstruction: inspection.reconstruction,
+          events: inspection.events,
+        }, null, 2)}</pre>
       </details>
     </aside>
   )

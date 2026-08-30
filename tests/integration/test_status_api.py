@@ -83,7 +83,7 @@ def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path
         },
         "features": {
             "chat": "ready",
-            "capability_broker": "preview",
+            "capability_broker": "ready",
             "memory_lattice": "preview",
             "appearance": "preview",
             "workspace_terminal": "preview",

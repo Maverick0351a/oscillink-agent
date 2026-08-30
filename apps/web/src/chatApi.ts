@@ -56,6 +56,54 @@ export interface ChatMessageResponse {
   context_manifest: ContextManifestProjection
 }
 
+export interface FileReadToolRequest {
+  schema_version: 1
+  operation: 'file.read'
+  scope_id: string
+  target: string
+  max_bytes: number
+}
+
+export interface PendingToolRequestResponse {
+  schema_version: 1
+  state: 'awaiting_approval'
+  session_id: string
+  run_id: string
+  task_id: string
+  provider: ChatMessageResponse['provider']
+  subject_actor_id: string
+  tool_request_event_id: string
+  request: FileReadToolRequest
+  valid_for_seconds: number
+  allowed_extensions: string[]
+  network_allowed: false
+}
+
+export interface DeniedCapabilityDecisionResponse {
+  schema_version: 1
+  state: 'denied'
+  session_id: string
+  run_id: string
+  tool_request_event_id: string
+}
+
+export type ChatTurnResponse = ChatMessageResponse | PendingToolRequestResponse
+export type CapabilityDecisionResponse =
+  | ChatMessageResponse
+  | DeniedCapabilityDecisionResponse
+
+export function isPendingToolRequest(
+  response: ChatTurnResponse,
+): response is PendingToolRequestResponse {
+  return 'state' in response && response.state === 'awaiting_approval'
+}
+
+export function isDeniedCapabilityDecision(
+  response: CapabilityDecisionResponse,
+): response is DeniedCapabilityDecisionResponse {
+  return 'state' in response && response.state === 'denied'
+}
+
 export interface RunEventProjection {
   id: string
   event_type: string
@@ -140,7 +188,7 @@ export async function sendChatMessage(
   sessionId: string,
   message: string,
   signal?: AbortSignal,
-): Promise<ChatMessageResponse> {
+): Promise<ChatTurnResponse> {
   const requestId = contractId('evt')
   const response = await fetch('/api/v1/chat/messages', {
     method: 'POST',
@@ -159,19 +207,51 @@ export async function sendChatMessage(
     }),
   })
   if (!response.ok) throw new Error(`chat request failed: ${response.status}`)
-  return response.json() as Promise<ChatMessageResponse>
+  return response.json() as Promise<ChatTurnResponse>
 }
 
 export async function inspectChatRun(
   sessionId: string,
   runId: string,
+  signal?: AbortSignal,
 ): Promise<ChatRunInspectionResponse> {
   const response = await fetch(
     `/api/v1/chat/sessions/${encodeURIComponent(sessionId)}/runs/${encodeURIComponent(runId)}`,
-    { headers: workspaceAuthorizationHeaders() },
+    { headers: workspaceAuthorizationHeaders(), signal },
   )
   if (!response.ok) {
     throw new Error(`run inspection failed: ${response.status}`)
   }
   return response.json() as Promise<ChatRunInspectionResponse>
+}
+
+export async function decideCapabilityRequest(
+  pending: PendingToolRequestResponse,
+  decision: 'approved' | 'denied',
+  signal?: AbortSignal,
+): Promise<CapabilityDecisionResponse> {
+  const requestId = contractId('evt')
+  const response = await fetch(
+    `/api/v1/capabilities/sessions/${encodeURIComponent(pending.session_id)}`
+      + `/runs/${encodeURIComponent(pending.run_id)}`
+      + `/requests/${encodeURIComponent(pending.tool_request_event_id)}/decision`,
+    {
+      method: 'POST',
+      signal,
+      headers: {
+        ...workspaceAuthorizationHeaders(),
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `capability-${requestId}`,
+      },
+      body: JSON.stringify({
+        schema_version: 1,
+        request_id: requestId,
+        decision,
+      }),
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`capability decision failed: ${response.status}`)
+  }
+  return response.json() as Promise<CapabilityDecisionResponse>
 }

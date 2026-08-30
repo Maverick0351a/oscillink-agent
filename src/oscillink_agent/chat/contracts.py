@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from oscillink_agent.agent_runtime.contracts import RunReconstruction
 from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.domain.context import ContextManifest
-from oscillink_agent.domain.events import Event, EventId, RunId, SessionId, TaskId
+from oscillink_agent.domain.events import ActorId, Event, EventId, RunId, SessionId, TaskId
 
 MemoryNodeId = Annotated[str, Field(pattern=r"^mem_[0-9A-HJKMNP-TV-Z]{26}$")]
 
@@ -77,8 +77,12 @@ class PendingToolRequestResponse(BaseModel):
     run_id: RunId
     task_id: TaskId
     provider: ChatProviderProjection
+    subject_actor_id: ActorId
     tool_request_event_id: EventId
     request: FileReadToolRequest
+    valid_for_seconds: Annotated[int, Field(ge=1, le=300)] = 60
+    allowed_extensions: tuple[str, ...]
+    network_allowed: Literal[False] = False
 
     @field_serializer("request")
     def serialize_request(self, value: FileReadToolRequest) -> dict[str, object]:
