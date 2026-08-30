@@ -71,9 +71,12 @@ Oscillink Agent is an **agentic memory workspace**, not a Qwen application and n
 
 Keep at most three active product workstreams:
 
-1. **Trustworthy Memory** — stable records, review states, provenance, contradictions, retrieval and candidate promotion.
-2. **Agent Workspace** — chat, Memory Lattice, source/import flow, proposal review, run timeline and polished demo states.
-3. **Provider and Runtime** — model/agent adapters, context compilation, bounded tools, budgets and replay.
+1. **Project Memory and public launch** — one-command local continuity, stable records,
+   corrections, provenance, deterministic context, and a clear open-source boundary.
+2. **Coding-agent integration and evaluation** — exercise two real clients, survive
+   compaction and switching, and measure total human effort under equal budgets.
+3. **Physical-intelligence discovery** — validate read-only episode and dataset quality
+   tooling before considering any actuator-connected integration.
 
 The primary customer demo journey is:
 
@@ -117,7 +120,9 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
-| Longitudinal evaluation and recovery package | planned | Required before private-pilot release |
+| Longitudinal public evaluation | implemented | Pinned public fixture, equal-budget baselines, deterministic report and offline smoke |
+| Project Memory read-only MCP sidecar | implemented | Local stdio `recall` and `explain` use strict schemas, deterministic manifests, typed absence and an official-client subprocess test; writes remain contract-only |
+| Physical-intelligence dataset inspection | planned | Evidence-gated read-only discovery; no robot or equipment control |
 | Semantic retrieval, training, multi-agent and cloud scale | deferred | Add only after measured product need |
 <!-- capability-ledger:end -->
 
@@ -125,7 +130,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 
 1. **Browser-complete governed memory journey — release candidate complete:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
 2. **Crash-safe provider and governed tool trajectory — complete:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
-3. **Reproducible private pilot and measured value — active:** verify versioned export/restore and the bounded deployment path, then add longitudinal evaluation against transcript and summary baselines.
+3. **Reproducible private pilot and measured value — implementation complete through public evaluation:** versioned recovery, bounded deployment, and deterministic longitudinal evaluation are executable; browser evidence summaries remain.
+4. **Open Project Memory wedge — active:** publish the boundary, expose approved corrected memory through a local MCP/CLI sidecar, prove a two-client continuity demonstration, and run a bounded external alpha.
 
 Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-range gates, and remain demoable without fabricated capability.
 

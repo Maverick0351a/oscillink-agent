@@ -2,9 +2,38 @@
 
 ## Positioning
 
-Oscillink Agent is the **memory control plane for long-running AI agents**. It gives agent developers, technical and research teams, consultants, and sensitive internal deployments a governed workspace for durable memory, deterministic context, interchangeable model providers, bounded tools, and inspectable runs.
+Oscillink Agent is the **continuity and memory control plane for long-running AI agents**.
+Its first product direction, **Oscillink Project Memory**, gives coding-agent users one
+corrected, cited project history that can survive compaction, restart, and provider or
+client changes. The broader platform gives agent developers, technical and research
+teams, consultants, and sensitive internal deployments a governed workspace for durable
+memory, deterministic context, interchangeable model providers, bounded tools, and
+inspectable runs.
 
 Most AI infrastructure helps teams call models, connect tools, and retrieve documents. It does not adequately govern what an agent learns, trusts, remembers, changes, or uses over time. Oscillink fills that missing control-plane layer. It is not a foundation model, vector database, generic autonomous-agent launcher, or terminal wrapper.
+
+The public promise must lead with useful continuity rather than governance terminology:
+
+> Install once, preserve corrected project history across compatible coding agents,
+> survive compaction, and inspect why context was selected.
+
+The intended operating principle is **autonomous by default, governed by exception, and
+reversible at all times**. Low-risk maintenance should not create an approval queue for
+every observation; contradictory, expensive, security-sensitive, or externally
+consequential changes remain subject to explicit policy and human control.
+
+## Open-source and commercial boundary
+
+The repository is licensed under Apache-2.0. The local memory, provenance, correction,
+context, evaluation, and adapter foundation is intended to be usable without a mandatory
+hosted account. Expected paid value comes from operating the shared state reliably:
+encrypted synchronization, hosted availability, team coordination, managed connectors,
+enterprise deployment, audit, policy administration, and support. See
+[`open-source-boundary.md`](open-source-boundary.md).
+
+Physical-intelligence episode and dataset tooling is an evidence-gated adjacency. The
+product does not currently control robots or equipment, and no software restore can undo
+a completed physical action.
 
 ## User problems
 

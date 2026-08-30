@@ -106,6 +106,16 @@ class MemorySourceSyncResult(FrozenModel):
     issues: int
 
 
+class MemoryReviewRecord(FrozenModel):
+    """Latest governed review decision for one exact memory revision."""
+
+    event_id: str
+    record_id: MemoryRecordId
+    content_hash: Digest
+    decision: MemoryAuthorityState
+    replacement_record_id: MemoryRecordId | None
+
+
 class SQLiteMemoryRepository:
     """Persist product-owned memory records independently of source adapters."""
 
@@ -491,6 +501,51 @@ class SQLiteMemoryRepository:
             (record_id,),
         ).fetchone()
         return None if row is None else self._with_review_state(row[0], row[1])
+
+    def get_revision(
+        self, record_id: str, content_hash: str
+    ) -> ProductMemoryRecord | None:
+        """Return one exact stored revision with its governed review state."""
+
+        rows = self._connection.execute(
+            """
+            SELECT record_json
+            FROM memory_record_revisions
+            WHERE record_id = ?
+            ORDER BY sequence DESC
+            """,
+            (record_id,),
+        )
+        for (encoded,) in rows:
+            record = ProductMemoryRecord.model_validate_json(encoded)
+            if record.content_hash == content_hash:
+                return self._with_review_state(record_id, encoded)
+        return None
+
+    def latest_review(
+        self, record_id: str, content_hash: str
+    ) -> MemoryReviewRecord | None:
+        """Return the latest review decision bound to one exact revision."""
+
+        row = self._connection.execute(
+            """
+            SELECT event_id, record_id, content_hash, decision, replacement_record_id
+            FROM memory_reviews
+            WHERE record_id = ? AND content_hash = ?
+            ORDER BY sequence DESC
+            LIMIT 1
+            """,
+            (record_id, content_hash),
+        ).fetchone()
+        if row is None:
+            return None
+        return MemoryReviewRecord(
+            event_id=str(row[0]),
+            record_id=str(row[1]),
+            content_hash=str(row[2]),
+            decision=MemoryAuthorityState(row[3]),
+            replacement_record_id=None if row[4] is None else str(row[4]),
+        )
 
     def review(
         self,

@@ -1,8 +1,24 @@
 # Oscillink Agent
 
-Oscillink Agent is the **memory control plane for long-running AI agents**: a customer-facing, model-neutral workspace for governed memory, deterministic context, bounded capabilities and inspectable runs. It helps teams preserve continuity without losing provenance, human control, portability, or the ability to explain and reverse what changed.
+**Time Machine for AI Agents: preserve context, survive compaction, switch models, and
+rewind mistakes.**
 
-## Problems it solves
+Oscillink Agent is an open-source, local-first continuity and control layer for
+long-running AI agents. Its first product direction is **Oscillink Project Memory**:
+one corrected, cited project history that compatible coding agents can share without
+making a model provider, transcript, filename, or vector database the source of truth.
+
+The existing alpha provides the governed foundation: immutable memory revisions,
+approved-only deterministic context, provenance-bearing citations, bounded capabilities,
+inspectable runs, reproducible evaluation, and versioned workspace recovery. A local
+read-only MCP stdio server now implements `recall` and `explain` and is exercised with the
+official Python MCP client. The `remember` and `correct` contracts exist but are not yet
+advertised by the server.
+
+> **Current status:** alpha research and private-pilot software. Do not use it to control
+> robots, industrial equipment, or other safety-critical systems.
+
+## What Project Memory is intended to solve
 
 - **Fragmented continuity:** decisions and corrections are scattered across transcripts, prompts, files, vector stores and provider-specific memory.
 - **Opaque or poisoned memory:** retrieved and generated text is often treated as trusted merely because it exists.
@@ -11,15 +27,24 @@ Oscillink Agent is the **memory control plane for long-running AI agents**: a cu
 - **Unsafe actions:** agents receive broad credentials, filesystem access or shell authority to perform narrow tasks.
 - **Weak recovery:** export, deletion, rollback and restore are rarely complete product contracts.
 
-Oscillink answers these problems with stable product-owned memory identities, immutable revisions, explicit authority states, human-reviewed promotion, provenance-bearing retrieval, deterministic context manifests, interchangeable providers, typed capability grants and replayable run history. The complete product description is in [`docs/product-description.md`](docs/product-description.md).
+Oscillink answers these problems with stable product-owned memory identities, immutable
+revisions, explicit authority states, provenance-bearing retrieval, deterministic context
+manifests, interchangeable providers, typed capability grants, and replayable run history.
+Governance is intended to be **autonomous by default, governed by exception, and
+reversible at all times**: routine low-risk maintenance should not require constant human
+approval, while conflicts and consequential changes remain inspectable and recoverable.
+
+The complete product description is in
+[`docs/product-description.md`](docs/product-description.md).
 
 ## Current maturity
 
-Oscillink Agent is a governed-agent `v0.2.0-alpha` release candidate. The
+Oscillink Agent is a governed-agent `v0.2.0-alpha` research release candidate. The
 browser-complete governed-memory journey, crash-safe provider/tool trajectory,
 and versioned workspace recovery path are executable from an empty data root.
-The active milestone is a reproducible private-pilot deployment and measured
-longitudinal value.
+The deterministic longitudinal public evaluation harness is also implemented. The
+active product milestone is to expose this foundation through a local Project Memory
+sidecar and prove corrected continuity across two independently exercised agent clients.
 
 The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The authenticated browser exposes that synchronization only as an explicit confirmed action and reports durable created/revised/unchanged/missing/issue accounting without revealing the configured source path. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
@@ -27,10 +52,34 @@ The authenticated browser enumerates only server-configured portable import targ
 
 `scripts/milestone_one_acceptance.py` exercises the complete authenticated journey in disposable state: native creation, explicit source sync, configured-target import, separate relationship and memory approval, approved-only chat context, immutable citation/run inspection, restart recovery, artifact verification, sanitization, and cleanup.
 
-The current critical path is: verify the private-pilot deployment and then run
-longitudinal evaluation against transcript and summary baselines. Semantic
-retrieval, terminal execution, training, multi-agent orchestration and cloud
-scale remain deferred until those finish lines pass.
+The current critical path is:
+
+1. make the repository safe and understandable for public contributors;
+2. extend the read-only MCP sidecar with governed candidate writes;
+3. prove a five-minute compaction, correction, and client-switch demonstration;
+4. validate the workflow with external coding-agent users.
+
+## Read-only Project Memory MCP
+
+From a source checkout, start the account-free local stdio server with one command:
+
+```bash
+uv run oscillink-project-memory --data-root /path/to/oscillink-workspace
+```
+
+The human selects the data root in client configuration; tool requests cannot select
+another workspace or actor identity. The process opens no network port and advertises only
+`recall` and `explain`, with read-only, non-destructive, idempotent, closed-world MCP hints.
+Returned memory text remains untrusted input. Its manifest identifies the exact approved
+revisions, token budget, omissions, and exclusion counts.
+
+This path has been exercised with the official Python MCP client. Compatibility with
+Claude, Codex, Hermes, OpenCode, or Cline is not claimed until each client is tested.
+
+A read-only physical-intelligence dataset experiment may run as a separate discovery
+track. Robot control, semantic retrieval, terminal execution, training, generalized
+multi-agent orchestration, and cloud scale remain deferred until their evidence gates
+pass.
 
 ## Provider strategy
 
@@ -40,6 +89,19 @@ scale remain deferred until those finish lines pass.
 - Scale path: provider/runtime configuration can target vLLM or NVIDIA NIM without changing workspace semantics.
 
 Open weights can remove per-token provider fees locally; hosted inference, cloud GPU and storage still have operating costs.
+
+## License and commercial boundary
+
+The repository is licensed under the
+[Apache License 2.0](LICENSE). The local continuity, provenance, correction, context,
+evaluation, and adapter foundation is intended to remain useful without a mandatory
+account. Expected commercial layers are operational services around that foundation:
+encrypted synchronization, hosted reliability, team coordination, managed connectors,
+enterprise deployment, audit, policy administration, and support—not marked-up model
+inference.
+
+See [`docs/open-source-boundary.md`](docs/open-source-boundary.md) for the explicit
+code, data, model, connector, and physical-intelligence boundaries.
 
 ## Architecture
 
@@ -157,3 +219,15 @@ The recommended sequence is a structured command runner after the capability bro
 ## Safety boundary
 
 An open or unrestricted model may reason and propose freely, but it does not receive unrestricted credentials, filesystem/network access, memory-promotion authority, governance mutation, self-deployment or shutdown control.
+
+## Community and security
+
+- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing code, fixtures, schemas, or
+  compatibility claims.
+- Follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) in project spaces.
+- Report vulnerabilities through the private-first process in
+  [`SECURITY.md`](SECURITY.md); do not publish exploit details or real credentials.
+- Community and design-partner claims follow the evidence gates in
+  [`docs/community-validation.md`](docs/community-validation.md).
+
+Oscillink Agent is distributed under the [Apache License 2.0](LICENSE).

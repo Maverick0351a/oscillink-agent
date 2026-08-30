@@ -109,7 +109,9 @@ class ContextManifest(FrozenModel):
     policy_hash: Digest
     items: tuple[ContextItem, ...]
     omissions: tuple[ContextOmission, ...] = ()
-    exclusion_summary: ContextExclusionSummary = ContextExclusionSummary()
+    exclusion_summary: ContextExclusionSummary = Field(
+        default_factory=ContextExclusionSummary
+    )
 
     @field_validator("items")
     @classmethod

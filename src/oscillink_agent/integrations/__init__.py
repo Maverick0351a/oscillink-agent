@@ -1,0 +1,1 @@
+"""External client integration adapters."""
