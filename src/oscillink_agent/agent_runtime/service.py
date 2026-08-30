@@ -37,6 +37,7 @@ from oscillink_agent.providers.base import (
     ProviderRequestError,
     ProviderResponseError,
     ProviderTimeoutError,
+    ToolRequestResult,
 )
 from oscillink_agent.providers.fake import DeterministicFakeProvider
 from oscillink_agent.retrieval.service import retrieve_memory_evidence
@@ -282,6 +283,8 @@ def create_chat_message(
             context_manifest=context_manifest,
             records=selected,
         )
+        if isinstance(provider_result, ToolRequestResult):
+            raise ProviderResponseError("provider tool-request runtime is unavailable")
     except (ProviderRequestError, ProviderResponseError) as exc:
         if isinstance(exc, ProviderTimeoutError):
             failure_kind = "timeout"

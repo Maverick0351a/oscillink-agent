@@ -108,6 +108,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Truthful provider and actor provenance | implemented | Public non-secret execution identity drives provider kind, model, configuration hash, operation and model actor; authenticated human actor IDs remain server-derived |
 | Governed file import | implemented | Browser enumerates only configured portable targets and imports them through the bounded content-addressed backend |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
+| Bounded provider tool-request contract | implemented | Fake and OpenAI-compatible providers return an exact final response or one portable `file.read` request; unknown, parallel, malformed, oversized and grant-bearing requests fail closed; execution remains unconnected |
 | Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |

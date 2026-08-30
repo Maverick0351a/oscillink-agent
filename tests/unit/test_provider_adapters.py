@@ -8,6 +8,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 
+from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.api import create_app
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.obsidian import MemoryCategory, MemoryDomain
@@ -18,6 +19,8 @@ from oscillink_agent.memory.repository import (
 )
 from oscillink_agent.providers import config as provider_config
 from oscillink_agent.providers import openai_compatible
+from oscillink_agent.providers.base import ToolRequestResult
+from oscillink_agent.providers.fake import DeterministicFakeProvider
 
 
 def request(
@@ -73,6 +76,44 @@ class _MalformedCompletionHandler(_CompletionHandler):
         self.wfile.write(body)
 
 
+class _ToolCompletionHandler(_CompletionHandler):
+    def do_POST(self) -> None:  # noqa: N802
+        length = int(self.headers["Content-Length"])
+        type(self).request_body = json.loads(self.rfile.read(length))
+        body = json.dumps(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "type": "function",
+                                    "function": {
+                                        "name": "file_read",
+                                        "arguments": json.dumps(
+                                            {
+                                                "schema_version": 1,
+                                                "scope_id": "repo_oscillink_agent",
+                                                "target": "README.md",
+                                                "max_bytes": 4096,
+                                            }
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
+        ).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
 def _approved_record() -> ProductMemoryRecord:
     return ProductMemoryRecord(
         id="mem_01J0000000000000000000000A",
@@ -101,6 +142,183 @@ def _manifest() -> ContextManifest:
         policy_hash="sha256:" + "b" * 64,
         items=(),
     )
+
+
+def test_fake_provider_can_deterministically_request_one_bounded_file_read() -> None:
+    request_contract = FileReadToolRequest(
+        schema_version=1,
+        operation="file.read",
+        scope_id="repo_oscillink_agent",
+        target="README.md",
+        max_bytes=4096,
+    )
+    provider = DeterministicFakeProvider(tool_request=request_contract)
+
+    result = provider.generate(
+        message="Read the governed file.",
+        context_manifest=_manifest(),
+        records=(),
+    )
+
+    assert result == ToolRequestResult(request=request_contract)
+    assert "grant" not in result.model_dump_json()
+
+
+def test_openai_compatible_adapter_parses_one_declared_file_read_request() -> None:
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _ToolCompletionHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        adapter = openai_compatible.OpenAICompatibleProvider(
+            base_url=f"http://127.0.0.1:{server.server_port}/v1",
+            model="local-tool-model",
+            timeout_seconds=2,
+        )
+        result = adapter.generate(
+            message="Read the governed file.",
+            context_manifest=_manifest(),
+            records=(),
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+    assert result == ToolRequestResult(
+        request=FileReadToolRequest(
+            schema_version=1,
+            operation="file.read",
+            scope_id="repo_oscillink_agent",
+            target="README.md",
+            max_bytes=4096,
+        )
+    )
+    sent = _ToolCompletionHandler.request_body
+    assert sent is not None
+    assert sent["parallel_tool_calls"] is False
+    assert [tool["function"]["name"] for tool in sent["tools"]] == ["file_read"]
+
+
+@pytest.mark.parametrize(
+    ("tool_calls", "answer"),
+    [
+        ([], None),
+        (
+            [
+                {"type": "function", "function": {"name": "file_read", "arguments": "{}"}},
+                {"type": "function", "function": {"name": "file_read", "arguments": "{}"}},
+            ],
+            None,
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {"name": "shell_exec", "arguments": "{}"},
+                }
+            ],
+            None,
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "file_read",
+                        "arguments": json.dumps(
+                            {
+                                "schema_version": 1,
+                                "scope_id": "repo_oscillink_agent",
+                                "target": "README.md",
+                                "max_bytes": 1_048_577,
+                            }
+                        ),
+                    },
+                }
+            ],
+            None,
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "file_read",
+                        "arguments": json.dumps(
+                            {
+                                "schema_version": 1,
+                                "scope_id": "repo_oscillink_agent",
+                                "target": "README.md",
+                                "max_bytes": 1024,
+                                "grant_id": "grt_01J00000000000000000000000",
+                            }
+                        ),
+                    },
+                }
+            ],
+            None,
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "file_read",
+                        "arguments": "{" + (" " * 16_385) + "}",
+                    },
+                }
+            ],
+            None,
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "file_read",
+                        "arguments": json.dumps(
+                            {
+                                "schema_version": 1,
+                                "scope_id": "repo_oscillink_agent",
+                                "target": "README.md",
+                                "max_bytes": 1024,
+                            }
+                        ),
+                    },
+                }
+            ],
+            "ambiguous answer",
+        ),
+        (
+            [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "file_read",
+                        "arguments": json.dumps(
+                            {
+                                "schema_version": 1,
+                                "scope_id": "repo_oscillink_agent",
+                                "target": "README.md",
+                                "max_bytes": 1024,
+                            }
+                        ),
+                    },
+                }
+            ],
+            {},
+        ),
+    ],
+)
+def test_openai_compatible_adapter_rejects_malformed_or_repeated_tool_requests(
+    tool_calls: Any,
+    answer: Any,
+) -> None:
+    with pytest.raises(openai_compatible.ProviderResponseError):
+        openai_compatible.OpenAICompatibleProvider._parse_tool_request(
+            tool_calls,
+            answer,
+        )
 
 
 def test_openai_compatible_adapter_sends_only_compiled_selected_evidence() -> None:

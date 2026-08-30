@@ -2,26 +2,56 @@
 
 import json
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from pydantic import ValidationError
+
+from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
 from oscillink_agent.providers.base import (
+    FinalResponseResult,
     ProviderExecutionIdentity,
     ProviderRequestError,
     ProviderResponseError,
     ProviderResult,
     ProviderTimeoutError,
+    ToolRequestResult,
     build_execution_identity,
 )
 
 
 class ProviderConfigurationError(ValueError):
     """Configured provider values are unsafe or incomplete."""
+
+
+_FILE_READ_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "file_read",
+        "description": "Request one governed portable file.read operation.",
+        "strict": True,
+        "parameters": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["schema_version", "scope_id", "target", "max_bytes"],
+            "properties": {
+                "schema_version": {"type": "integer", "const": 1},
+                "scope_id": {"type": "string"},
+                "target": {"type": "string"},
+                "max_bytes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1_048_576,
+                },
+            },
+        },
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -89,6 +119,8 @@ class OpenAICompatibleProvider:
                     {"role": "system", "content": system_content},
                     {"role": "user", "content": message},
                 ],
+                "tools": [_FILE_READ_TOOL],
+                "parallel_tool_calls": False,
             },
             ensure_ascii=False,
             separators=(",", ":"),
@@ -111,9 +143,50 @@ class OpenAICompatibleProvider:
             raise ProviderRequestError("provider request failed") from error
         try:
             decoded = json.loads(response_body)
-            answer = decoded["choices"][0]["message"]["content"]
+            response_message = decoded["choices"][0]["message"]
+            if not isinstance(response_message, dict):
+                raise TypeError
+            tool_calls = response_message.get("tool_calls")
+            answer = response_message.get("content")
         except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
             raise ProviderResponseError("provider response lacked message content") from error
+        if tool_calls is not None:
+            return self._parse_tool_request(tool_calls, answer)
         if not isinstance(answer, str) or not answer.strip():
             raise ProviderResponseError("provider response message content was empty")
-        return ProviderResult(answer=answer.strip())
+        return FinalResponseResult(answer=answer.strip())
+
+    @staticmethod
+    def _parse_tool_request(tool_calls: Any, answer: Any) -> ToolRequestResult:
+        if answer is not None and answer != "":
+            raise ProviderResponseError("provider response mixed answer and tool request")
+        if not isinstance(tool_calls, list) or len(tool_calls) != 1:
+            raise ProviderResponseError("provider response must contain one tool request")
+        tool_call = tool_calls[0]
+        try:
+            if tool_call["type"] != "function":
+                raise ValueError
+            function = tool_call["function"]
+            if function["name"] != "file_read":
+                raise ValueError
+            arguments = function["arguments"]
+            if not isinstance(arguments, str) or len(arguments.encode("utf-8")) > 16_384:
+                raise ValueError
+            decoded_arguments = json.loads(arguments)
+            if not isinstance(decoded_arguments, dict):
+                raise TypeError
+            if "operation" in decoded_arguments:
+                raise ValueError
+            request = FileReadToolRequest.model_validate(
+                {"operation": "file.read", **decoded_arguments},
+                strict=True,
+            )
+        except (
+            json.JSONDecodeError,
+            KeyError,
+            TypeError,
+            ValueError,
+            ValidationError,
+        ) as error:
+            raise ProviderResponseError("provider returned an invalid tool request") from error
+        return ToolRequestResult(request=request)

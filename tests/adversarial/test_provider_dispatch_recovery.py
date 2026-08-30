@@ -12,6 +12,7 @@ from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
 from oscillink_agent.providers.base import (
+    FinalResponseResult,
     ProviderExecutionIdentity,
     ProviderResult,
     build_execution_identity,
@@ -75,7 +76,7 @@ class StorageObservingProvider:
             )
         )
         assert persisted_manifest == context_manifest
-        return ProviderResult(answer="Provider observed durable intent.")
+        return FinalResponseResult(answer="Provider observed durable intent.")
 
 
 class FailingProvider:

@@ -3,14 +3,14 @@
 import hashlib
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
-from oscillink_agent.domain.events import Digest, canonical_payload_hash
+from oscillink_agent.domain.events import Digest, FrozenModel, canonical_payload_hash
 from oscillink_agent.memory.repository import ProductMemoryRecord
 
 ProviderKind = Literal["fake", "ollama", "openai_compatible"]
@@ -74,11 +74,28 @@ class ProviderResponseError(RuntimeError):
     """The configured provider returned an invalid completion payload."""
 
 
-@dataclass(frozen=True)
-class ProviderResult:
-    """Provider output before governed citations and persistence are attached."""
+class FinalResponseResult(FrozenModel):
+    """A provider completed the turn without requesting a capability."""
 
-    answer: str
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    kind: Literal["final_response"] = "final_response"
+    answer: Annotated[str, Field(min_length=1, max_length=1_048_576)]
+
+
+class ToolRequestResult(FrozenModel):
+    """A provider requested one bounded operation but received no authority."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    kind: Literal["tool_request"] = "tool_request"
+    request: FileReadToolRequest
+
+
+ProviderResult = Annotated[
+    FinalResponseResult | ToolRequestResult,
+    Field(discriminator="kind"),
+]
 
 
 class ChatProvider(Protocol):
