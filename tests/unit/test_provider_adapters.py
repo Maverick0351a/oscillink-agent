@@ -179,7 +179,12 @@ def test_configured_provider_runs_through_governed_api_and_replays_after_restart
     )
     data_root = tmp_path / "runtime"
     try:
-        app = create_app(data_root=data_root, vault_root=None, chat_provider=adapter)
+        app = create_app(
+            data_root=data_root,
+            vault_root=None,
+            chat_provider=adapter,
+            workspace_actor_id="human_provider_operator",
+        )
         node = request(
             app,
             "POST",
@@ -225,6 +230,30 @@ def test_configured_provider_runs_through_governed_api_and_replays_after_restart
             "model": "local-contract-model",
         }
         assert created.json()["answer"] == "grounded provider answer"
+        inspected = request(
+            app,
+            "GET",
+            f"/api/v1/chat/sessions/{created.json()['session_id']}"
+            f"/runs/{created.json()['run_id']}",
+        )
+        assert inspected.status_code == 200, inspected.text
+        events = inspected.json()["events"]
+        identity = adapter.execution_identity
+        assert events[0]["actor"] == {
+            "id": "human_provider_operator",
+            "type": "human",
+        }
+        assert events[2]["model"] == {
+            "provider": identity.kind,
+            "name": identity.model,
+            "configuration_hash": identity.configuration_hash,
+        }
+        assert events[2]["payload"]["provider_operation"] == identity.operation
+        assert events[3]["actor"] == {"id": identity.actor_id, "type": "model"}
+        assert events[4]["actor"] == {"id": identity.actor_id, "type": "model"}
+        encoded_events = json.dumps(events)
+        assert "deterministic_fake" not in encoded_events
+        assert "fake_provider_chat" not in encoded_events
 
         restarted = create_app(
             data_root=data_root,
@@ -260,10 +289,41 @@ def test_provider_configuration_selects_ollama_without_exposing_secrets() -> Non
 
     assert isinstance(provider, openai_compatible.OpenAICompatibleProvider)
     assert provider.projection.model_dump(mode="json") == {
-        "kind": "openai_compatible",
+        "kind": "ollama",
         "model": "qwen3:14b",
     }
-    assert "[REDACTED]" not in repr(provider.projection)
+    identity = getattr(provider, "execution_identity", None)
+    assert identity is not None
+    assert identity.model_dump(mode="json") == {
+        "kind": "ollama",
+        "model": "qwen3:14b",
+        "actor_id": "model_ollama_qwen3_14b",
+        "operation": "ollama.chat.completions",
+        "configuration_hash": identity.configuration_hash,
+    }
+    same_public_configuration = build_provider(
+        {
+            "OSCILLINK_CHAT_PROVIDER": "ollama",
+            "OSCILLINK_CHAT_BASE_URL": "http://127.0.0.1:11434/v1",
+            "OSCILLINK_CHAT_MODEL": "qwen3:14b",
+            "OSCILLINK_CHAT_API_KEY": "different-secret",
+        }
+    )
+    changed_timeout = build_provider(
+        {
+            "OSCILLINK_CHAT_PROVIDER": "ollama",
+            "OSCILLINK_CHAT_BASE_URL": "http://127.0.0.1:11434/v1",
+            "OSCILLINK_CHAT_MODEL": "qwen3:14b",
+            "OSCILLINK_CHAT_TIMEOUT_SECONDS": "31",
+        }
+    )
+    assert same_public_configuration.execution_identity.configuration_hash == (
+        identity.configuration_hash
+    )
+    assert changed_timeout.execution_identity.configuration_hash != (
+        identity.configuration_hash
+    )
+    assert "[REDACTED]" not in repr(identity)
 
 
 def test_provider_protocol_failure_is_a_bounded_bad_gateway_response(tmp_path: Any) -> None:

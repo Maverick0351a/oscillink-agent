@@ -171,14 +171,13 @@ def create_chat_message(
         )
     citation_tuple = tuple(citations)
     configured_provider = provider_adapter or DeterministicFakeProvider()
-    provider = configured_provider.projection
+    execution_identity = configured_provider.execution_identity
+    provider = execution_identity.projection
     context_manifest_ref = repository.put_context_manifest(context_manifest)
     model_identity = ModelIdentity(
         provider=provider.kind,
         name=provider.model,
-        configuration_hash=canonical_payload_hash(
-            {"provider": provider.kind, "model": provider.model}
-        ),
+        configuration_hash=execution_identity.configuration_hash,
     )
     context_event_id = _derived_id(request.request_id, "evt", "chat-context-compiled")
     model_call_id = _derived_id(request.request_id, "evt", "chat-model-call-pending")
@@ -204,6 +203,8 @@ def create_chat_message(
         "operation": "model_call_pending",
         "provider_kind": provider.kind,
         "provider_model": provider.model,
+        "provider_actor_id": execution_identity.actor_id,
+        "provider_operation": execution_identity.operation,
         "context_manifest_id": context_manifest.id,
         "context_manifest_ref": context_manifest_ref,
     }
@@ -327,6 +328,8 @@ def create_chat_message(
         "operation": "model_call_succeeded",
         "provider_kind": provider.kind,
         "provider_model": provider.model,
+        "provider_actor_id": execution_identity.actor_id,
+        "provider_operation": execution_identity.operation,
     }
     response_payload = {
         "operation": "final_response",
@@ -341,7 +344,7 @@ def create_chat_message(
                 session_id=request.session_id,
                 run_id=run_id,
                 task_id=task_id,
-                actor=Actor(id="model_deterministic_fake", type=ActorType.MODEL),
+                actor=Actor(id=execution_identity.actor_id, type=ActorType.MODEL),
                 event_type=EventType.OUTCOME,
                 observed_at=completed_at,
                 recorded_at=completed_at,
@@ -362,7 +365,7 @@ def create_chat_message(
                 session_id=request.session_id,
                 run_id=run_id,
                 task_id=task_id,
-                actor=Actor(id="model_deterministic_fake", type=ActorType.MODEL),
+                actor=Actor(id=execution_identity.actor_id, type=ActorType.MODEL),
                 event_type=EventType.MESSAGE,
                 observed_at=completed_at,
                 recorded_at=completed_at,

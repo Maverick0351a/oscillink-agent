@@ -1,6 +1,7 @@
 """Non-secret provider selection from application configuration."""
 
 from collections.abc import Mapping
+from typing import Literal, cast
 
 from oscillink_agent.providers.base import ChatProvider
 from oscillink_agent.providers.fake import DeterministicFakeProvider
@@ -39,9 +40,11 @@ def build_chat_provider(values: Mapping[str, str]) -> ChatProvider:
             "OSCILLINK_CHAT_TIMEOUT_SECONDS must be numeric"
         ) from error
     api_key = values.get("OSCILLINK_CHAT_API_KEY") or None
+    adapter_kind = cast(Literal["ollama", "openai_compatible"], provider_kind)
     return OpenAICompatibleProvider(
         base_url=base_url,
         model=model,
         timeout_seconds=timeout_seconds,
         api_key=api_key,
+        provider_kind=adapter_kind,
     )

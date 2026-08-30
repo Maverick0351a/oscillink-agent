@@ -50,7 +50,7 @@ export interface ChatMessageResponse {
   session_id: string
   run_id: string
   task_id: string
-  provider: { kind: 'fake' | 'openai_compatible'; model: string }
+  provider: { kind: 'fake' | 'ollama' | 'openai_compatible'; model: string }
   answer: string
   citations: ChatCitation[]
   context_manifest: ContextManifestProjection

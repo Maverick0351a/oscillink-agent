@@ -3,7 +3,11 @@
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
-from oscillink_agent.providers.base import ProviderResult
+from oscillink_agent.providers.base import (
+    ProviderExecutionIdentity,
+    ProviderResult,
+    build_execution_identity,
+)
 
 
 class DeterministicFakeProvider:
@@ -11,7 +15,15 @@ class DeterministicFakeProvider:
 
     @property
     def projection(self) -> ChatProviderProjection:
-        return ChatProviderProjection()
+        return self.execution_identity.projection
+
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return build_execution_identity(
+            kind="fake",
+            model="deterministic-v1",
+            public_configuration={},
+        )
 
     def generate(
         self,

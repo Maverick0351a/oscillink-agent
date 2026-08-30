@@ -30,7 +30,7 @@ class ChatProviderProjection(BaseModel):
 
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 
-    kind: Literal["fake", "openai_compatible"] = "fake"
+    kind: Literal["fake", "ollama", "openai_compatible"] = "fake"
     model: Annotated[str, Field(min_length=1, max_length=512)] = "deterministic-v1"
 
 

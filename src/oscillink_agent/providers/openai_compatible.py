@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass, field
+from typing import Literal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -10,10 +11,12 @@ from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
 from oscillink_agent.providers.base import (
+    ProviderExecutionIdentity,
     ProviderRequestError,
     ProviderResponseError,
     ProviderResult,
     ProviderTimeoutError,
+    build_execution_identity,
 )
 
 
@@ -29,6 +32,7 @@ class OpenAICompatibleProvider:
     model: str
     timeout_seconds: float = 30.0
     api_key: str | None = field(default=None, repr=False)
+    provider_kind: Literal["ollama", "openai_compatible"] = "openai_compatible"
 
     def __post_init__(self) -> None:
         parsed = urlparse(self.base_url)
@@ -45,7 +49,18 @@ class OpenAICompatibleProvider:
 
     @property
     def projection(self) -> ChatProviderProjection:
-        return ChatProviderProjection(kind="openai_compatible", model=self.model)
+        return self.execution_identity.projection
+
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return build_execution_identity(
+            kind=self.provider_kind,
+            model=self.model,
+            public_configuration={
+                "base_url": self.base_url.rstrip("/"),
+                "timeout_seconds": self.timeout_seconds,
+            },
+        )
 
     def generate(
         self,

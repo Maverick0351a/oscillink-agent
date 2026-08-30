@@ -15,6 +15,11 @@ function label(value: string) {
 export default function RunInspector({ inspection, onClose }: RunInspectorProps) {
   const manifest = inspection.context_manifest
   const exclusions = manifest.exclusion_summary
+  const providerEvent = inspection.events.find((event) => event.model != null)
+  const providerModel = providerEvent?.model
+  const providerActor = inspection.events.find(
+    (event) => event.model != null && event.actor.type === 'model',
+  )?.actor.id
 
   return (
     <aside className="run-inspector" aria-label="Run inspector">
@@ -28,6 +33,32 @@ export default function RunInspector({ inspection, onClose }: RunInspectorProps)
           <X size={16} aria-hidden="true" />
         </button>
       </header>
+
+      {providerModel ? (
+        <section
+          className="run-inspector-section"
+          aria-label="Provider execution identity"
+        >
+          <div className="run-inspector-section-title">
+            <Activity size={15} aria-hidden="true" />
+            <strong>PROVIDER IDENTITY</strong>
+          </div>
+          <dl className="context-manifest-facts">
+            <div>
+              <dt>PROVIDER / MODEL</dt>
+              <dd>{label(providerModel.provider)} · {providerModel.name}</dd>
+            </div>
+            <div>
+              <dt>MODEL ACTOR</dt>
+              <dd>{providerActor ?? 'PENDING PROVIDER RESULT'}</dd>
+            </div>
+            <div>
+              <dt>CONFIGURATION</dt>
+              <dd>{providerModel.configuration_hash}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       <section className="run-inspector-section" aria-label="Persisted event trajectory">
         <div className="run-inspector-section-title">

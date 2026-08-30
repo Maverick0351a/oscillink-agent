@@ -11,13 +11,25 @@ from oscillink_agent.api import create_app
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
-from oscillink_agent.providers.base import ProviderResult
+from oscillink_agent.providers.base import (
+    ProviderExecutionIdentity,
+    ProviderResult,
+    build_execution_identity,
+)
 from oscillink_agent.providers.openai_compatible import (
     ProviderRequestError,
     ProviderTimeoutError,
 )
 from oscillink_agent.storage.artifacts import LocalArtifactStore
 from oscillink_agent.storage.sqlite import SQLiteEventStore
+
+
+def provider_identity(model: str) -> ProviderExecutionIdentity:
+    return build_execution_identity(
+        kind="fake",
+        model=model,
+        public_configuration={},
+    )
 
 
 class StorageObservingProvider:
@@ -29,6 +41,10 @@ class StorageObservingProvider:
     @property
     def projection(self) -> ChatProviderProjection:
         return ChatProviderProjection(kind="fake", model="intent-observer-v1")
+
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return provider_identity("intent-observer-v1")
 
     def generate(
         self,
@@ -70,6 +86,10 @@ class FailingProvider:
     def projection(self) -> ChatProviderProjection:
         return ChatProviderProjection(kind="fake", model="failing-provider-v1")
 
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return provider_identity("failing-provider-v1")
+
     def generate(
         self,
         *,
@@ -86,6 +106,10 @@ class TimingOutProvider(FailingProvider):
     @property
     def projection(self) -> ChatProviderProjection:
         return ChatProviderProjection(kind="fake", model="timing-out-provider-v1")
+
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return provider_identity("timing-out-provider-v1")
 
     def generate(
         self,
@@ -111,6 +135,10 @@ class InterruptingProvider:
     def projection(self) -> ChatProviderProjection:
         return ChatProviderProjection(kind="fake", model="interrupting-provider-v1")
 
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
+        return provider_identity("interrupting-provider-v1")
+
     def generate(
         self,
         *,
@@ -129,6 +157,10 @@ class ShouldNotDispatchProvider:
 
     @property
     def projection(self) -> ChatProviderProjection:
+        raise AssertionError("provider accessed before durable retry resolution")
+
+    @property
+    def execution_identity(self) -> ProviderExecutionIdentity:
         raise AssertionError("provider accessed before durable retry resolution")
 
     def generate(

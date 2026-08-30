@@ -95,6 +95,11 @@ function appFetch(input: RequestInfo | URL) {
           event_type: 'model_call',
           observed_at: '2026-08-29T00:00:01Z',
           actor: { id: 'system_chat-runtime', type: 'system' },
+          model: {
+            provider: 'fake',
+            name: 'deterministic-v1',
+            configuration_hash: 'sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+          },
           artifact_refs: ['sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'],
           causal_parent_ids: ['evt_01ARZ3NDEKTSV4RRFFQ69G5FC1'],
           payload: { provider_model: 'deterministic-v1' },
@@ -265,6 +270,10 @@ describe('Oscillink Agent shell', () => {
     const runInspector = await screen.findByRole('complementary', { name: 'Run inspector' })
     expect(within(runInspector).getByText('3 PERSISTED EVENTS')).toBeInTheDocument()
     expect(within(runInspector).getByText('MODEL CALL')).toBeInTheDocument()
+    expect(
+      within(runInspector).getByRole('region', { name: 'Provider execution identity' }),
+    ).toHaveTextContent('FAKE · deterministic-v1')
+    expect(within(runInspector).getByText(/sha256:e{64}/)).toBeInTheDocument()
     expect(within(runInspector).getByText('Oscillink Agent')).toBeInTheDocument()
     expect(within(runInspector).getByText('RANK 1 · SCORE 4')).toBeInTheDocument()
     expect(

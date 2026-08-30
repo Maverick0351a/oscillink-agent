@@ -105,6 +105,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Fake and OpenAI-compatible provider chat | implemented | `src/oscillink_agent/providers/`, `src/oscillink_agent/chat/` |
 | Persisted typed run reconstruction | implemented | Causal state projection recovers legacy and multi-call/tool trajectories across restart; tool execution remains unconnected |
 | Crash-safe provider dispatch | implemented | Request, context and pending intent are durable before dispatch; success, bounded failure, timeout and interruption are inspectable, and ambiguous retries fail closed without redispatch |
+| Truthful provider and actor provenance | implemented | Public non-secret execution identity drives provider kind, model, configuration hash, operation and model actor; authenticated human actor IDs remain server-derived |
 | Governed file import | implemented | Browser enumerates only configured portable targets and imports them through the bounded content-addressed backend |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
 | Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |
