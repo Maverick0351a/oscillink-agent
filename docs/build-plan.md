@@ -106,7 +106,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Persisted run inspection | preview | Three-event runs work; multi-call/tool reconstruction is not implemented |
 | Governed file import | implemented | Browser enumerates only configured portable targets and imports them through the bounded content-addressed backend |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
-| Browser memory creation, source sync and proposal review | implemented | Native creation, confirmed source sync, configured-target import and ledger-backed terminal proposal decisions are implemented |
+| Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |
 | Authenticated local workspace boundary | implemented | Bearer-authenticated single-workspace scope, server-derived actor identity, strict local CORS/trusted-host allowlists and browser in-memory unlock are enforced |
 | Workspace terminal execution | contract-only | The UI is intentionally execution-locked |
 | Longitudinal evaluation and recovery package | planned | Required before private-pilot release |
@@ -115,8 +115,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 
 ### Active maturity milestones
 
-1. **Browser-complete governed memory journey:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
-2. **Crash-safe provider and governed tool trajectory:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
+1. **Browser-complete governed memory journey — release candidate complete:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
+2. **Crash-safe provider and governed tool trajectory — active:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
 3. **Reproducible private pilot and measured value:** add versioned export/restore, a bounded deployment path and a longitudinal evaluation against transcript and summary baselines.
 
 Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-range gates, and remain demoable without fabricated capability.
@@ -1034,7 +1034,7 @@ Every scaling change must pass contract parity, hidden evaluations, security tes
 | Release | Finish line | Local/cloud |
 |---|---|---|
 | `v0.1` | Governed memory kernel, approved retrieval, provider chat and three-event run inspection | Local technical alpha |
-| `v0.2` | Authenticated browser-complete governed memory journey | Local/private |
+| `v0.2.0-alpha` | Authenticated browser-complete governed memory journey | Local/private technical alpha |
 | `v0.3` | Crash-safe multi-call run with one governed `file.read` | Local/private |
 | `v0.4-private-pilot` | Versioned export/restore, deployment runbook and public evaluation | Private pilot |
 | `v0.4` | Completed pilot rehearsal with measured outcomes and no critical recovery/auth defects | Private |

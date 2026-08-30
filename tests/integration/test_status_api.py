@@ -73,7 +73,7 @@ def test_status_reports_uninitialized_storage_without_creating_it(tmp_path: Path
     assert response.status_code == 200
     assert response.json() == {
         "service": "oscillink-agent",
-        "version": "0.1.0",
+        "version": "0.2.0a0",
         "api_state": "online",
         "workspace_auth": {"state": "locked"},
         "storage": {

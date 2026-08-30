@@ -15,13 +15,15 @@ Oscillink answers these problems with stable product-owned memory identities, im
 
 ## Current maturity
 
-Oscillink Agent is a governed-agent technical alpha. The governed continuity
-kernel is implemented; the active milestone is a browser-complete private
-workspace journey rather than another horizontal infrastructure layer.
+Oscillink Agent is a governed-agent `v0.2.0-alpha` release candidate. The
+browser-complete governed-memory journey is executable from an empty data root;
+the active milestone is a crash-safe provider and governed-tool trajectory.
 
 The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The authenticated browser exposes that synchronization only as an explicit confirmed action and reports durable created/revised/unchanged/missing/issue accounting without revealing the configured source path. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
 The authenticated browser enumerates only server-configured portable import targets, streams the selected bytes through bounded type/size and symlink/reparse checks, and reports sanitized content-addressed deduplication accounting. An exact `doc_` or product-owned `mem_` target creates a separate append-only `memory_proposal` candidate in `pending_review`; import never rewrites canonical memory or implies acceptance. The durable proposal queue reconstructs pending, approved and rejected relationship projections from ledger events, attributes one idempotent terminal decision to the authenticated human actor, and enforces one decision per proposal. Approved relationships remain explicit proposal projections rather than silently changing memory-content authority or entering model context. The vertical chat runtime ranks approved, non-missing product memory deterministically, records query and budget omissions without exposing unapproved content, compiles a content-addressed `ContextManifest`, and emits revision- and rank-bound citations. The fake provider and configured OpenAI-compatible/Ollama adapter share that authority boundary, while each three-event trajectory remains inspectable and replayable after restart. Candidate, missing, superseded and contradicted memory remains excluded.
+
+`scripts/milestone_one_acceptance.py` exercises the complete authenticated journey in disposable state: native creation, explicit source sync, configured-target import, separate relationship and memory approval, approved-only chat context, immutable citation/run inspection, restart recovery, artifact verification, sanitization, and cleanup.
 
 The current critical path is: crash-safe multi-call provider/tool trajectories, then
 export/restore and longitudinal evaluation for a private pilot. Semantic
