@@ -104,7 +104,7 @@ def create_app(
     application.include_router(
         build_status_router(root, workspace_auth=workspace_auth)
     )
-    application.include_router(build_workspace_router(workspace_auth))
+    application.include_router(build_workspace_router(root, workspace_auth))
     application.include_router(
         build_chat_router(
             root,

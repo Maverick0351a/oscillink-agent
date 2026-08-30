@@ -124,6 +124,7 @@ PYTHONPATH= .venv/Scripts/python.exe scripts/verify.py --base HEAD
 The implementation plan is in [`docs/build-plan.md`](docs/build-plan.md).
 Frontend and appearance boundaries are in [`docs/frontend-architecture.md`](docs/frontend-architecture.md) and [`docs/appearance-contract.md`](docs/appearance-contract.md).
 Reviewed indexing, category colors and subject-domain labels are specified in [`docs/memory-contract.md`](docs/memory-contract.md).
+Versioned canonical export, atomic restore, rollback and deletion semantics are documented in [`docs/workspace-recovery.md`](docs/workspace-recovery.md).
 
 ## Governed workspace terminal
 

@@ -20,6 +20,10 @@ from oscillink_agent.domain.events import (
     EventType,
     TrustClass,
 )
+from oscillink_agent.storage.migrations import (
+    record_current_schema,
+    require_compatible_schema,
+)
 from oscillink_agent.storage.sqlite import LedgerCorruptionError, SQLiteEventStore
 
 
@@ -47,6 +51,15 @@ class CapabilityBroker:
     def _connect(self) -> sqlite3.Connection:
         self._database.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self._database, timeout=30, isolation_level=None)
+        try:
+            require_compatible_schema(
+                connection,
+                store_name="capabilities",
+                current_version=1,
+            )
+        except BaseException:
+            connection.close()
+            raise
         connection.execute("PRAGMA journal_mode=WAL")
         connection.execute("PRAGMA foreign_keys=ON")
         connection.execute(
@@ -58,6 +71,7 @@ class CapabilityBroker:
             )
             """
         )
+        record_current_schema(connection, current_version=1)
         return connection
 
     @staticmethod

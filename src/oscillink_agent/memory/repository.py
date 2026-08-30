@@ -17,6 +17,10 @@ from oscillink_agent.memory.obsidian import (
     MemoryCategory,
     MemoryDomain,
 )
+from oscillink_agent.storage.migrations import (
+    record_current_schema,
+    require_compatible_schema,
+)
 
 MemoryRecordId = Annotated[str, Field(pattern=r"^mem_[0-9A-HJKMNP-TV-Z]{26}$")]
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -107,7 +111,17 @@ class SQLiteMemoryRepository:
 
     def __init__(self, database: Path) -> None:
         database.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = sqlite3.connect(database, timeout=10)
+        connection = sqlite3.connect(database, timeout=10)
+        try:
+            require_compatible_schema(
+                connection,
+                store_name="memory",
+                current_version=1,
+            )
+        except BaseException:
+            connection.close()
+            raise
+        self._connection = connection
         self._connection.execute("PRAGMA foreign_keys = ON")
         self._connection.execute("PRAGMA journal_mode = WAL")
         self._connection.execute(
@@ -201,6 +215,7 @@ class SQLiteMemoryRepository:
             self._connection.execute(
                 "ALTER TABLE memory_source_syncs ADD COLUMN issue_count INTEGER NOT NULL DEFAULT 0"
             )
+        record_current_schema(self._connection, current_version=1)
 
     def create_native(
         self,
