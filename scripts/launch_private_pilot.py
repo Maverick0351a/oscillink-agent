@@ -129,11 +129,16 @@ def main(argv: list[str] | None = None) -> int:
             log_level="warning",
         )
     )
+    def request_shutdown(_signum: int, _frame: object) -> None:
+        server.should_exit = True
+
+    # Uvicorn restores and replays captured signals after graceful shutdown.
+    # Installing a bounded launcher handler first prevents that replay from
+    # re-terminating the already-clean process with a platform signal code.
+    signal.signal(signal.SIGINT, request_shutdown)
+    signal.signal(signal.SIGTERM, request_shutdown)
     if os.name == "nt":
-        signal.signal(
-            signal.SIGBREAK,
-            lambda _signum, _frame: setattr(server, "should_exit", True),
-        )
+        signal.signal(signal.SIGBREAK, request_shutdown)
     server.run()
     return 0
 
