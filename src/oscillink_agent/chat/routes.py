@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from oscillink_agent.agent_runtime.errors import (
     ChatIdempotencyConflictError,
+    ChatProviderDispatchUncertainError,
+    ChatProviderRunFailedError,
     ChatRunIncompleteError,
     ChatRunNotFoundError,
 )
@@ -17,10 +19,11 @@ from oscillink_agent.chat.contracts import (
     ChatRunInspectionResponse,
 )
 from oscillink_agent.domain.events import RunId, SessionId
-from oscillink_agent.providers.base import ChatProvider
-from oscillink_agent.providers.openai_compatible import (
+from oscillink_agent.providers.base import (
+    ChatProvider,
     ProviderRequestError,
     ProviderResponseError,
+    ProviderTimeoutError,
 )
 from oscillink_agent.workspaces.contracts import LocalWorkspacePrincipal
 from oscillink_agent.workspaces.service import LocalWorkspaceAuth
@@ -70,6 +73,28 @@ def build_chat_router(
                     "code": "idempotency_conflict",
                     "message": "Idempotency key belongs to another chat request.",
                 },
+            ) from None
+        except ChatProviderRunFailedError as error:
+            raise HTTPException(
+                status_code=504 if error.failure_kind == "timeout" else 502,
+                detail=(
+                    "configured chat provider timed out"
+                    if error.failure_kind == "timeout"
+                    else "configured chat provider failed"
+                ),
+            ) from None
+        except ChatProviderDispatchUncertainError:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "provider_dispatch_uncertain",
+                    "message": "Provider dispatch cannot be safely repeated.",
+                },
+            ) from None
+        except ProviderTimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail="configured chat provider timed out",
             ) from None
         except (ProviderRequestError, ProviderResponseError):
             raise HTTPException(

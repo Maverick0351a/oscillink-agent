@@ -103,7 +103,8 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Product-owned memory identities, revisions and review | implemented | `src/oscillink_agent/memory/` |
 | Approved-only lexical retrieval and context manifests | implemented | `src/oscillink_agent/retrieval/`, `src/oscillink_agent/context/` |
 | Fake and OpenAI-compatible provider chat | implemented | `src/oscillink_agent/providers/`, `src/oscillink_agent/chat/` |
-| Persisted typed run reconstruction | implemented | Causal state projection recovers legacy and multi-call/tool trajectories across restart; provider dispatch and tool execution remain unconnected |
+| Persisted typed run reconstruction | implemented | Causal state projection recovers legacy and multi-call/tool trajectories across restart; tool execution remains unconnected |
+| Crash-safe provider dispatch | implemented | Request, context and pending intent are durable before dispatch; success, bounded failure, timeout and interruption are inspectable, and ambiguous retries fail closed without redispatch |
 | Governed file import | implemented | Browser enumerates only configured portable targets and imports them through the bounded content-addressed backend |
 | Single-use `file.read` capability broker | preview | Broker is tested but not connected to the chat runtime |
 | Browser memory creation, source sync and proposal review | implemented | `scripts/milestone_one_acceptance.py` proves the disposable, restart-recoverable, approved-only end-to-end journey |

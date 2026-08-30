@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
 
 from oscillink_agent.api import create_app
@@ -136,6 +137,31 @@ def test_openai_compatible_adapter_sends_only_compiled_selected_evidence() -> No
     system_content = sent["messages"][0]["content"]
     assert "Only approved resonance evidence may enter model context." in system_content
     assert "mem_01J0000000000000000000000A" in system_content
+
+
+def test_openai_compatible_adapter_reports_timeout_as_a_typed_failure(
+    monkeypatch: Any,
+) -> None:
+    timeout_error = getattr(openai_compatible, "ProviderTimeoutError", None)
+    assert timeout_error is not None
+
+    def time_out(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise TimeoutError
+
+    monkeypatch.setattr(openai_compatible, "urlopen", time_out)
+    adapter = openai_compatible.OpenAICompatibleProvider(
+        base_url="http://127.0.0.1:11434/v1",
+        model="local-contract-model",
+        timeout_seconds=2,
+    )
+
+    with pytest.raises(timeout_error):
+        adapter.generate(
+            message="Will this time out?",
+            context_manifest=_manifest(),
+            records=(),
+        )
 
 
 def test_configured_provider_runs_through_governed_api_and_replays_after_restart(

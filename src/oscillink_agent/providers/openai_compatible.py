@@ -9,19 +9,16 @@ from urllib.request import Request, urlopen
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
-from oscillink_agent.providers.base import ProviderResult
+from oscillink_agent.providers.base import (
+    ProviderRequestError,
+    ProviderResponseError,
+    ProviderResult,
+    ProviderTimeoutError,
+)
 
 
 class ProviderConfigurationError(ValueError):
     """Configured provider values are unsafe or incomplete."""
-
-
-class ProviderRequestError(RuntimeError):
-    """The configured provider could not complete the request."""
-
-
-class ProviderResponseError(RuntimeError):
-    """The configured provider returned an invalid completion payload."""
 
 
 @dataclass(frozen=True)
@@ -93,7 +90,9 @@ class OpenAICompatibleProvider:
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:  # noqa: S310
                 response_body = response.read()
-        except (HTTPError, URLError, TimeoutError, OSError) as error:
+        except TimeoutError as error:
+            raise ProviderTimeoutError("provider request timed out") from error
+        except (HTTPError, URLError, OSError) as error:
             raise ProviderRequestError("provider request failed") from error
         try:
             decoded = json.loads(response_body)

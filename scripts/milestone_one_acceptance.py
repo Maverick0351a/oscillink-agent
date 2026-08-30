@@ -345,7 +345,7 @@ This curated connector record still requires explicit product approval.
     run_recovered = (
         recovered_run["context_manifest"] == chat["context_manifest"]
         and [event["event_type"] for event in recovered_run["events"]]
-        == ["message", "model_call", "message"]
+        == ["message", "outcome", "model_call", "outcome", "message"]
     )
     if not canonical_state_recovered or not proposal_recovered or not run_recovered:
         raise AssertionError("restart did not recover canonical Milestone 1 state")

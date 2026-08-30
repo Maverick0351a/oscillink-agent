@@ -149,14 +149,16 @@ def test_approved_memory_is_cited_in_a_persisted_fake_provider_run(tmp_path: Any
     assert run["run_id"] == payload["run_id"]
     assert [event["event_type"] for event in run["events"]] == [
         "message",
+        "outcome",
         "model_call",
+        "outcome",
         "message",
     ]
     assert run["context_manifest"] == payload["context_manifest"]
     assert run["events"][1]["payload"]["context_manifest_ref"] == (
         run["events"][1]["artifact_refs"][0]
     )
-    assert run["events"][2]["payload"]["answer"] == payload["answer"]
+    assert run["events"][4]["payload"]["answer"] == payload["answer"]
     assert run["reconstruction"] == {
         "schema_version": 1,
         "session_id": payload["session_id"],
@@ -175,20 +177,34 @@ def test_approved_memory_is_cited_in_a_persisted_fake_provider_run(tmp_path: Any
             {
                 "sequence": 1,
                 "event_id": run["events"][1]["id"],
-                "kind": "model_call_succeeded",
-                "event_type": "model_call",
+                "kind": "context_compiled",
+                "event_type": "outcome",
                 "causal_parent_ids": [run["events"][0]["id"]],
             },
             {
                 "sequence": 2,
                 "event_id": run["events"][2]["id"],
+                "kind": "model_call_pending",
+                "event_type": "model_call",
+                "causal_parent_ids": [run["events"][1]["id"]],
+            },
+            {
+                "sequence": 3,
+                "event_id": run["events"][3]["id"],
+                "kind": "model_call_succeeded",
+                "event_type": "outcome",
+                "causal_parent_ids": [run["events"][2]["id"]],
+            },
+            {
+                "sequence": 4,
+                "event_id": run["events"][4]["id"],
                 "kind": "final_response",
                 "event_type": "message",
-                "causal_parent_ids": [run["events"][1]["id"]],
+                "causal_parent_ids": [run["events"][3]["id"]],
             },
         ],
         "context_manifest_ref": run["events"][1]["artifact_refs"][0],
-        "final_response_event_id": run["events"][2]["id"],
+        "final_response_event_id": run["events"][4]["id"],
         "model_call_count": 1,
         "tool_call_count": 0,
     }
