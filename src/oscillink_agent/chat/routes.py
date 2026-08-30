@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 
 from oscillink_agent.agent_runtime.errors import (
     ChatIdempotencyConflictError,
@@ -17,6 +17,7 @@ from oscillink_agent.chat.contracts import (
     ChatMessageRequest,
     ChatMessageResponse,
     ChatRunInspectionResponse,
+    PendingToolRequestResponse,
 )
 from oscillink_agent.domain.events import RunId, SessionId
 from oscillink_agent.providers.base import (
@@ -41,9 +42,13 @@ def build_chat_router(
 
     router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
-    @router.post("/messages", response_model=ChatMessageResponse)
+    @router.post(
+        "/messages",
+        response_model=ChatMessageResponse | PendingToolRequestResponse,
+    )
     def post_message(
         request: ChatMessageRequest,
+        response: Response,
         idempotency_key: Annotated[
             str,
             Header(
@@ -57,15 +62,18 @@ def build_chat_router(
             LocalWorkspacePrincipal,
             Depends(workspace_auth.require_principal),
         ],
-    ) -> ChatMessageResponse:
+    ) -> ChatMessageResponse | PendingToolRequestResponse:
         try:
-            return create_chat_message(
+            result = create_chat_message(
                 data_root,
                 request,
                 idempotency_key=idempotency_key,
                 provider_adapter=provider,
                 actor_id=principal.actor_id,
             )
+            if isinstance(result, PendingToolRequestResponse):
+                response.status_code = 202
+            return result
         except ChatIdempotencyConflictError:
             raise HTTPException(
                 status_code=409,

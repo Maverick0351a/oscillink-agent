@@ -12,6 +12,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from oscillink_agent import __version__
 from oscillink_agent.artifact_imports.routes import build_artifact_import_router
+from oscillink_agent.capabilities.routes import build_capability_router
 from oscillink_agent.chat.routes import build_chat_router
 from oscillink_agent.memory.routes import build_memory_router
 from oscillink_agent.proposals.routes import build_proposal_router
@@ -49,6 +50,7 @@ def create_app(
     data_root: Path | None = None,
     vault_root: Path | None = None,
     import_scopes: Mapping[str, Path] | None = None,
+    capability_scopes: Mapping[str, Path] | None = None,
     chat_provider: ChatProvider | None = None,
     workspace_credential: str | None = None,
     workspace_id: str = "ws_local",
@@ -60,6 +62,7 @@ def create_app(
 
     root = data_root if data_root is not None else _default_data_root()
     configured_import_scopes = dict(import_scopes or {})
+    configured_capability_scopes = dict(capability_scopes or {})
     application = FastAPI(title="Oscillink Agent API", version=__version__)
     configured_origins = (
         allowed_origins
@@ -105,6 +108,14 @@ def create_app(
     application.include_router(
         build_chat_router(
             root,
+            provider=configured_chat_provider,
+            workspace_auth=workspace_auth,
+        )
+    )
+    application.include_router(
+        build_capability_router(
+            root,
+            scope_roots=configured_capability_scopes,
             provider=configured_chat_provider,
             workspace_auth=workspace_auth,
         )

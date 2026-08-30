@@ -177,6 +177,36 @@ def test_anonymous_run_inspection_fails_without_initializing_storage(
     assert not data_root.exists()
 
 
+def test_anonymous_capability_decision_fails_without_initializing_storage(
+    tmp_path: Path,
+) -> None:
+    data_root = tmp_path / "runtime"
+    app = create_app(
+        data_root=data_root,
+        vault_root=None,
+        workspace_credential="test-private-credential",
+    )
+
+    response = request(
+        app,
+        "POST",
+        (
+            "/api/v1/capabilities/sessions/ses_01J00000000000000000000040"
+            "/runs/run_01J00000000000000000000040"
+            "/requests/evt_01J00000000000000000000040/decision"
+        ),
+        headers={"Idempotency-Key": "anonymous-capability-decision"},
+        json={
+            "schema_version": 1,
+            "request_id": "evt_01J00000000000000000000041",
+            "decision": "approved",
+        },
+    )
+
+    assert response.status_code == 401, response.json()
+    assert not data_root.exists()
+
+
 def test_anonymous_artifact_import_fails_without_initializing_storage(
     tmp_path: Path,
 ) -> None:

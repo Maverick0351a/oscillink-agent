@@ -7,6 +7,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from oscillink_agent.agent_runtime.contracts import RunReconstruction
+from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.domain.events import Event, EventId, RunId, SessionId, TaskId
 
@@ -62,6 +63,25 @@ class ChatMessageResponse(BaseModel):
 
     @field_serializer("context_manifest")
     def serialize_context_manifest(self, value: ContextManifest) -> dict[str, object]:
+        return value.model_dump(mode="json")
+
+
+class PendingToolRequestResponse(BaseModel):
+    """A provider request awaiting one exact authenticated human decision."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    state: Literal["awaiting_approval"] = "awaiting_approval"
+    session_id: SessionId
+    run_id: RunId
+    task_id: TaskId
+    provider: ChatProviderProjection
+    tool_request_event_id: EventId
+    request: FileReadToolRequest
+
+    @field_serializer("request")
+    def serialize_request(self, value: FileReadToolRequest) -> dict[str, object]:
         return value.model_dump(mode="json")
 
 

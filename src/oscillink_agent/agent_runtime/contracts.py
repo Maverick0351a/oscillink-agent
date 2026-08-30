@@ -125,7 +125,10 @@ _ALLOWED_TRANSITIONS = {
         RunStepKind.GRANT_APPROVED,
         RunStepKind.GRANT_DENIED,
     },
-    RunStepKind.GRANT_APPROVED: {RunStepKind.TOOL_CALL_CLAIMED},
+    RunStepKind.GRANT_APPROVED: {
+        RunStepKind.TOOL_CALL_CLAIMED,
+        RunStepKind.TOOL_FAILED,
+    },
     RunStepKind.TOOL_CALL_CLAIMED: {
         RunStepKind.OBSERVATION,
         RunStepKind.TOOL_FAILED,

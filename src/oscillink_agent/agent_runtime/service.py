@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,11 +14,14 @@ from oscillink_agent.agent_runtime.errors import (
     ChatProviderRunFailedError,
 )
 from oscillink_agent.agent_runtime.repository import SQLiteChatRunRepository
+from oscillink_agent.agent_runtime.tools import FileReadToolRequest
 from oscillink_agent.chat.contracts import (
     ChatCitation,
     ChatMessageRequest,
     ChatMessageResponse,
+    ChatProviderProjection,
     ChatRunInspectionResponse,
+    PendingToolRequestResponse,
 )
 from oscillink_agent.context.compiler import compile_context
 from oscillink_agent.domain.events import (
@@ -123,7 +127,7 @@ def create_chat_message(
     idempotency_key: str,
     provider_adapter: ChatProvider | None = None,
     actor_id: str = "human_local_user",
-) -> ChatMessageResponse:
+) -> ChatMessageResponse | PendingToolRequestResponse:
     """Persist provider intent before dispatch, then finalize the durable run."""
 
     run_id = _derived_id(request.request_id, "run", "chat-run")
@@ -142,6 +146,33 @@ def create_chat_message(
         persisted = repository.inspect(request.session_id, run_id)
         if persisted.reconstruction.state is RunState.COMPLETED:
             return repository.response_from_run(persisted)
+        if persisted.reconstruction.state is RunState.AWAITING_APPROVAL:
+            tool_event = persisted.events[-1]
+            raw_request = tool_event.payload.get("request")
+            if not isinstance(raw_request, Mapping) or tool_event.model is None:
+                raise ChatProviderDispatchUncertainError
+            try:
+                tool_request = FileReadToolRequest.model_validate(
+                    dict(raw_request),
+                    strict=True,
+                )
+                projection = ChatProviderProjection.model_validate(
+                    {
+                        "kind": tool_event.model.provider,
+                        "model": tool_event.model.name,
+                    },
+                    strict=True,
+                )
+            except ValueError as error:
+                raise ChatProviderDispatchUncertainError from error
+            return PendingToolRequestResponse(
+                session_id=request.session_id,
+                run_id=run_id,
+                task_id=persisted.reconstruction.task_id,
+                provider=projection,
+                tool_request_event_id=tool_event.id,
+                request=tool_request,
+            )
         if persisted.reconstruction.state is RunState.FAILED:
             failure_kind = persisted.events[-1].payload.get("failure_kind")
             if failure_kind not in {"request", "response", "timeout"}:
@@ -283,8 +314,6 @@ def create_chat_message(
             context_manifest=context_manifest,
             records=selected,
         )
-        if isinstance(provider_result, ToolRequestResult):
-            raise ProviderResponseError("provider tool-request runtime is unavailable")
     except (ProviderRequestError, ProviderResponseError) as exc:
         if isinstance(exc, ProviderTimeoutError):
             failure_kind = "timeout"
@@ -316,6 +345,83 @@ def create_chat_message(
             idempotency_key=idempotency_key,
         )
         raise
+    if isinstance(provider_result, ToolRequestResult):
+        completed_at = datetime.now(UTC)
+        success_payload = {
+            "operation": "model_call_succeeded",
+            "provider_kind": provider.kind,
+            "provider_model": provider.model,
+            "provider_actor_id": execution_identity.actor_id,
+            "provider_operation": execution_identity.operation,
+        }
+        tool_request_id = _derived_id(request.request_id, "evt", "chat-tool-request")
+        tool_request_payload = {
+            "operation": "tool_requested",
+            "request": provider_result.request.model_dump(mode="json"),
+        }
+        try:
+            repository.append_many(
+                (
+                    (
+                        Event(
+                            id=model_success_id,
+                            schema_version=1,
+                            session_id=request.session_id,
+                            run_id=run_id,
+                            task_id=task_id,
+                            actor=Actor(
+                                id=execution_identity.actor_id,
+                                type=ActorType.MODEL,
+                            ),
+                            event_type=EventType.OUTCOME,
+                            observed_at=completed_at,
+                            recorded_at=completed_at,
+                            payload_hash=canonical_payload_hash(success_payload),
+                            artifact_refs=(),
+                            causal_parent_ids=(model_call_id,),
+                            trust_class=TrustClass.MODEL_GENERATED,
+                            sensitivity=Sensitivity.INTERNAL,
+                            payload=success_payload,
+                            model=model_identity,
+                        ),
+                        f"{idempotency_key}:model:success",
+                    ),
+                    (
+                        Event(
+                            id=tool_request_id,
+                            schema_version=1,
+                            session_id=request.session_id,
+                            run_id=run_id,
+                            task_id=task_id,
+                            actor=Actor(
+                                id=execution_identity.actor_id,
+                                type=ActorType.MODEL,
+                            ),
+                            event_type=EventType.TOOL_CALL,
+                            observed_at=completed_at,
+                            recorded_at=completed_at,
+                            payload_hash=canonical_payload_hash(tool_request_payload),
+                            artifact_refs=(),
+                            causal_parent_ids=(model_success_id,),
+                            trust_class=TrustClass.MODEL_GENERATED,
+                            sensitivity=Sensitivity.INTERNAL,
+                            payload=tool_request_payload,
+                            model=model_identity,
+                        ),
+                        f"{idempotency_key}:tool:request",
+                    ),
+                )
+            )
+        except IdempotencyConflictError as exc:
+            raise ChatIdempotencyConflictError from exc
+        return PendingToolRequestResponse(
+            session_id=request.session_id,
+            run_id=run_id,
+            task_id=task_id,
+            provider=provider,
+            tool_request_event_id=tool_request_id,
+            request=provider_result.request,
+        )
     answer = provider_result.answer
     response = ChatMessageResponse(
         session_id=request.session_id,

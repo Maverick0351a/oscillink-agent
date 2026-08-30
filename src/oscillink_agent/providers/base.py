@@ -8,6 +8,7 @@ from typing import Annotated, Any, Literal, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from oscillink_agent.agent_runtime.tools import FileReadToolRequest
+from oscillink_agent.capabilities.contracts import FileReadObservation
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.domain.events import Digest, FrozenModel, canonical_payload_hash
@@ -113,4 +114,5 @@ class ChatProvider(Protocol):
         message: str,
         context_manifest: ContextManifest,
         records: tuple[ProductMemoryRecord, ...],
+        observation: FileReadObservation | None = None,
     ) -> ProviderResult: ...

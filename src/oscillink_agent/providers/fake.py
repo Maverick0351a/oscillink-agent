@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from oscillink_agent.agent_runtime.tools import FileReadToolRequest
+from oscillink_agent.capabilities.contracts import FileReadObservation
 from oscillink_agent.chat.contracts import ChatProviderProjection
 from oscillink_agent.domain.context import ContextManifest
 from oscillink_agent.memory.repository import ProductMemoryRecord
@@ -39,8 +40,16 @@ class DeterministicFakeProvider:
         message: str,
         context_manifest: ContextManifest,
         records: tuple[ProductMemoryRecord, ...],
+        observation: FileReadObservation | None = None,
     ) -> ProviderResult:
         del message, context_manifest
+        if observation is not None:
+            return FinalResponseResult(
+                answer=(
+                    "Grounded in approved memory with one external untrusted "
+                    "file observation."
+                )
+            )
         if self.tool_request is not None:
             return ToolRequestResult(request=self.tool_request)
         answer = (
