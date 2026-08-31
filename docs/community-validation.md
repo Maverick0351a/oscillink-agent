@@ -13,6 +13,9 @@ This document defines the minimum evidence required before Oscillink Agent claim
 
 ## Coding-agent alpha
 
+Recruitment, participant commitment and the public application path are documented in the
+[Project Memory public alpha](alpha-cohort.md).
+
 ### Target user
 
 Developers using coding agents across multiple sessions, compaction events, restarts, or model/client changes.

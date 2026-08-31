@@ -302,7 +302,7 @@ paths during actual evaluation.
 - Create: `AGENTS.md`
 - Create: `.gitignore`
 - Create: `docs/build-plan.md`
-- Create: `C:\Users\Maverick\Documents\Maverick HQ\20 Projects\Oscillink Agent.md`
+- Create: `<optional-obsidian-vault>/20 Projects/Oscillink Agent.md`
 
 **Steps:**
 

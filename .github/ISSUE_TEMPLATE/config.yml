@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Maverick0351a/oscillink-agent/security/advisories/new
+    about: Report vulnerabilities privately. Do not include sensitive details in a public issue.
+  - name: Project Memory discussions
+    url: https://github.com/Maverick0351a/oscillink-agent/discussions
+    about: Ask usage questions and share sanitized Project Memory workflows.

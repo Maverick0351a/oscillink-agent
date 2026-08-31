@@ -537,7 +537,7 @@ def _create_server(
 
     return Server(
         "oscillink-project-memory",
-        version="0.2.0a0",
+        version="0.2.0a1",
         description="Local governed Project Memory for long-running AI agents",
         on_list_tools=on_list_tools,
         on_call_tool=on_call_tool,

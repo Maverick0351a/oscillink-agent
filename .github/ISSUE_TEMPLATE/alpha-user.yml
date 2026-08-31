@@ -1,0 +1,74 @@
+name: Join the Project Memory alpha
+description: Apply to use Project Memory on an active project across three separated sessions.
+title: "[alpha] "
+labels:
+  - alpha-user
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping test Project Memory. Keep project names, source code, credentials,
+        prompts, transcripts, customer data, and other private material out of this public issue.
+        We need workflow evidence, not your proprietary data.
+  - type: dropdown
+    id: clients
+    attributes:
+      label: Coding agents you actively use
+      description: Select every client you expect to use during the alpha.
+      multiple: true
+      options:
+        - Hermes
+        - OpenCode
+        - Claude Code
+        - Codex
+        - Cursor
+        - Cline
+        - Other MCP-compatible client
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and environment
+      description: For example, Windows 11 with Git Bash or Ubuntu 24.04.
+      placeholder: Windows 11, Python 3.11, uv installed
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Multi-session workflow
+      description: Describe the kind of project and continuity problem without identifying the project or sharing private data.
+      placeholder: I use coding agents over several days and repeatedly re-explain architecture decisions after compaction.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current continuity workaround
+      description: How do you currently preserve decisions, corrections, and failed approaches?
+      placeholder: CLAUDE.md plus copied summaries and manual reminders.
+    validations:
+      required: true
+  - type: checkboxes
+    id: commitment
+    attributes:
+      label: Alpha commitment
+      options:
+        - label: I can test on my own active project across three sessions separated by restart or compaction.
+          required: true
+        - label: I can spend about 30 minutes on setup and provide brief follow-up evidence.
+          required: true
+        - label: I will keep credentials, proprietary source, raw transcripts, customer data, and sensitive artifacts out of public issues.
+          required: true
+        - label: I understand this is alpha software and will not use it for safety-critical or physical control.
+          required: true
+  - type: textarea
+    id: integration
+    attributes:
+      label: Most valuable integration or operated capability
+      description: What specific client, hosted sync, team, or workflow capability would make this useful repeatedly?
+      placeholder: Native Claude Code setup plus encrypted synchronization between two machines.
+    validations:
+      required: false

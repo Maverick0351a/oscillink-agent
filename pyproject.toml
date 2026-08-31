@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "oscillink-agent"
-version = "0.2.0a0"
+version = "0.2.0a1"
 description = "Local-first project memory and continuity control plane for AI agents"
 readme = "README.md"
 license = "Apache-2.0"

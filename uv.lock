@@ -369,7 +369,7 @@ wheels = [
 
 [[package]]
 name = "oscillink-agent"
-version = "0.2.0a0"
+version = "0.2.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

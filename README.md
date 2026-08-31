@@ -1,5 +1,9 @@
 # Oscillink Project Memory
 
+[![CI](https://github.com/Maverick0351a/oscillink-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Maverick0351a/oscillink-agent/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-3776AB.svg)](https://www.python.org/downloads/release/python-3110/)
+
 **Install once. Preserve corrected, cited project history across compatible AI coding
 agents. Survive compaction, switch clients, and inspect why context was selected.**
 
@@ -7,9 +11,13 @@ Oscillink is an open-source, local-first continuity and control layer for long-r
 agents. Project Memory is its first product: one governed project history that does not make
 a model provider, transcript, filename, or vector database the source of truth.
 
-> **Status:** `v0.2.0-alpha` research and private-pilot software. External-user validation is
+> **Status:** `v0.2.0-alpha.1` research and public-alpha software. External-user validation is
 > still required. Do not use it to control robots, industrial equipment, or other
 > safety-critical systems.
+
+> **Public alpha:** We are recruiting five coding-agent users for three real project sessions.
+> [See the cohort commitment](docs/alpha-cohort.md) or
+> [apply through the bounded GitHub form](https://github.com/Maverick0351a/oscillink-agent/issues/new?template=alpha-user.yml).
 
 ## See corrected continuity in under five minutes
 
@@ -105,6 +113,7 @@ and physical control remain deferred behind evidence and safety gates.
 ## Evidence and validation
 
 - [Browser evaluation and recovery evidence](docs/browser-evidence.md)
+- [Public alpha launch audit](docs/public-launch-audit.md)
 - [Community/external-user validation protocol](docs/community-validation.md)
 - [Open-source and commercial boundary](docs/open-source-boundary.md)
 - [Workspace recovery contract](docs/workspace-recovery.md)

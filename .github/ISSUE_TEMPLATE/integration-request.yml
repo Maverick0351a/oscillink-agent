@@ -1,0 +1,44 @@
+name: Integration request
+description: Request one concrete coding-agent or team workflow integration.
+title: "[integration] "
+labels:
+  - integration
+  - needs-triage
+body:
+  - type: input
+    id: product
+    attributes:
+      label: Client or workflow
+      placeholder: Claude Code, Codex, Cline, Cursor, hosted team sync
+    validations:
+      required: true
+  - type: textarea
+    id: job
+    attributes:
+      label: Repeated job to be done
+      description: Describe the real multi-session workflow and current continuity failure.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current workaround
+      description: Explain what you use now and why it is insufficient.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Required authority and data boundary
+      description: State what data the integration may read/write and what must remain forbidden.
+    validations:
+      required: true
+  - type: checkboxes
+    id: evidence
+    attributes:
+      label: Validation
+      options:
+        - label: I would test this integration on my own active project.
+          required: true
+        - label: I understand a request is evidence for evaluation, not a commitment to build it.
+          required: true

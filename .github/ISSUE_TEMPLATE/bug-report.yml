@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a reproducible Project Memory failure using sanitized evidence.
+title: "[bug] "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include credentials, private prompts, host paths, proprietary source, raw
+        transcripts, customer data, runtime databases, or sensitive artifacts. Follow SECURITY.md
+        for vulnerabilities.
+  - type: input
+    id: revision
+    attributes:
+      label: Oscillink revision or release
+      placeholder: v0.2.0-alpha.1 or full commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and Python version
+      placeholder: Windows 11, Python 3.11.15
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client and version
+      placeholder: OpenCode 1.18.25
+    validations:
+      required: false
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide deterministic steps using synthetic or sanitized data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Include typed error codes, redacted logs, and exact non-secret revision identifiers where useful.
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, private data, raw host paths, and proprietary artifacts.
+          required: true
+        - label: This report does not describe an undisclosed vulnerability; if it does, I will use private vulnerability reporting instead.
+          required: true
