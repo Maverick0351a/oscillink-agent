@@ -219,9 +219,11 @@ and frontend 54 passed. Both hosts produced reviewed diff SHA-256
 
 ## Task B5: Narrow roadmap Task 3.4 to evidence needed by the demo
 
-**Status:** Implemented; focused tests, live browser-harness acceptance, and the full local
-candidate gate pass (Python 355 passed / 4 skipped; frontend 61 passed). Immutable-range and
-Buildbox exact-SHA verification remain.
+**Status:** Completed in `40a9cad` and exact-SHA verified locally and on Buildbox. Local
+immutable verification passed with Python 355 passed / 4 skipped and frontend 61 passed.
+Detached Buildbox verification at `40a9cad91fcf7e036bf45e93a8ca15bb49ae4647`
+passed with Python 358 passed / 1 skipped and frontend 61 passed. Both hosts produced reviewed
+diff SHA-256 `6f4aa148a2c02b7842540468335681b806deeb95abbc0f441b30d905b0532dfc`.
 
 **Objective:** Preserve the useful browser control-center work without letting a broad UI milestone delay the sidecar.
 
