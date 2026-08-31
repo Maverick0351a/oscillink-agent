@@ -67,3 +67,39 @@ Secret scanners cannot prove that no sensitive value exists. Synthetic strings c
 positives, and unknown credential formats can evade default rules. Contributors must continue to
 keep credentials, private prompts, customer artifacts, hidden evaluation labels and runtime state
 out of Git and must rotate any real credential that is ever exposed.
+
+## Post-launch verification
+
+The bounded public alpha launched from tag `v0.2.0-alpha.1` at exact commit
+`87922b91c4a858469d9734609faf922de4513366`.
+
+- Local immutable verification: Python 355 passed / 4 skipped; frontend 61 passed.
+- Detached Buildbox verification: Python 358 passed / 1 skipped; frontend 61 passed.
+- GitHub Actions run
+  [`33387093925`](https://github.com/Maverick0351a/oscillink-agent/actions/runs/33387093925)
+  passed both `quality (windows-latest)` and `quality (ubuntu-latest)` on the exact commit.
+- A CI-only repair changed the workflow from the pytest console entry point to
+  `python -m pytest`; the former excluded the repository root and could not import the demo
+  script package on a clean runner. The differential reproduction failed with exit 2 through
+  the console entry point and passed three acceptance tests through module invocation.
+- An unauthenticated shallow clone resolved the exact public commit and completed the documented
+  account-free continuity demonstration in 6.719 seconds with 40 context tokens, no transcript
+  replay and exact `supersedes` lineage. This maintainer-run smoke test is launch evidence, not an
+  external participant.
+- GitHub reports public visibility, Apache-2.0 licensing, seven discovery topics and 100% community
+  profile health.
+- Private vulnerability reporting, Dependabot security updates, secret scanning and push
+  protection are enabled.
+- `main` requires strict Windows and Ubuntu CI, one non-admin approval, stale-review dismissal,
+  linear history and resolved conversations; force-push and deletion are disabled.
+- The published wheel and source distribution were downloaded into an isolated directory and
+  verified against a portable two-entry `SHA256SUMS.txt` manifest.
+
+Public launch surfaces:
+
+- [Prerelease](https://github.com/Maverick0351a/oscillink-agent/releases/tag/v0.2.0-alpha.1)
+- [Five-user enrollment issue](https://github.com/Maverick0351a/oscillink-agent/issues/1)
+- [Public-alpha announcement](https://github.com/Maverick0351a/oscillink-agent/discussions/2)
+
+The Gate 3 count remains **0/5 external users** until independent people use Project Memory on
+their own project workflows.

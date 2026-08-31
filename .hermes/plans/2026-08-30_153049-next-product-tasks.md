@@ -403,6 +403,11 @@ Pass only if:
 
 ## Gate 3 — Coding-agent product evidence
 
+**Status:** Recruitment active; `v0.2.0-alpha.1` is public at
+`Maverick0351a/oscillink-agent`. Enrollment is tracked in issue #1 and announced in Discussion #2.
+Current qualifying external-user count: **0/5**. Maintainer smoke tests, delegated agents, stars
+and demonstrations do not increment this count.
+
 Run a bounded alpha with at least five external users. Continue only if:
 - At least three use it across three separated sessions.
 - At least two independently report avoiding re-explanation, repeated mistakes, or stale context.
