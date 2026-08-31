@@ -78,10 +78,13 @@ At most three workstreams may be active:
 
 ## Task A3: Rewrite onboarding around one outcome
 
-**Status:** Implemented; the exact documented command completed in 5.594 seconds with three
-distinct client processes, 40 context tokens, no transcript replay and `supersedes` lineage.
-Relative Markdown links resolve. The full candidate gate passes locally (Python 355 passed /
-4 skipped; frontend 61 passed). Immutable-range and Buildbox exact-SHA verification remain.
+**Status:** Completed in `7493f7d` and exact-SHA verified locally and on Buildbox. The exact
+documented command completed in 5.594 seconds with three distinct client processes, 40 context
+tokens, no transcript replay and `supersedes` lineage. Relative Markdown links resolve. Local
+immutable verification passed with Python 355 passed / 4 skipped and frontend 61 passed.
+Detached Buildbox verification at `7493f7dd42720ae1faca1cb3243043a4fc38da2b`
+passed with Python 358 passed / 1 skipped and frontend 61 passed. Both hosts produced reviewed
+diff SHA-256 `8a5c655156064b65e24737ca80bd14090e642d4d6f1a883088d4bb85dce1df8d`.
 
 **Objective:** Reduce the current private-pilot-heavy README to a five-minute community path while retaining advanced runbooks.
 
