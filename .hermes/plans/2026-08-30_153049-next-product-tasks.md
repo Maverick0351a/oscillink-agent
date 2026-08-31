@@ -149,7 +149,7 @@ At most three workstreams may be active:
 
 ## Task B3: Add governed `remember` and `correct`
 
-**Status:** Implemented and candidate-verified locally; pending immutable-range verification.
+**Status:** Completed and immutable-range verified in `b139ec6`.
 
 **Objective:** Complete the cross-agent learning loop without silent canonical mutation.
 
