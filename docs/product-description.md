@@ -73,7 +73,7 @@ Many agent systems do not provide complete export, deletion, rollback, or restor
 
 Oscillink is designed around portable records, content-addressed artifacts, append-only decisions, deterministic projections, workspace backup/restore, and reversible promotion.
 
-## Infrastructure being added
+## Implemented foundation and bounded next layers
 
 ### Governed memory lifecycle
 
@@ -89,39 +89,61 @@ native creation or source snapshot
 → replayable history
 ```
 
-The implemented foundation already includes product-owned memory identities, revision-bound approve/reject/supersede decisions, optional Obsidian synchronization, artifact provenance, restart recovery, authority-aware Memory Lattice projections, and browser review controls.
+The implemented foundation includes product-owned memory identities, revision-bound
+approve/reject/supersede decisions, candidate-only MCP writes, optional Obsidian
+synchronization, artifact provenance, restart recovery, authority-aware Memory Lattice
+projections, and browser review controls.
 
 ### Authority-aware retrieval
 
-Default agent retrieval will include only authorized, current, authority-eligible records. Similarity cannot promote a candidate, revive a rejected revision, hide a contradiction, suppress mandatory policy, or bypass project scope. Every returned item will retain its citation, revision hash, provenance, contradiction state, and inclusion reason.
+Default agent retrieval includes only authorized, current, authority-eligible records.
+Similarity cannot promote a candidate, revive a rejected revision, hide a contradiction,
+suppress mandatory policy, or bypass project scope. Every returned item retains its citation,
+revision hash, provenance, authority state, and inclusion reason.
 
 ### Deterministic context manifests
 
-Every model call will carry a persisted `ContextManifest` identifying exact memory revisions, retrieval policy, inclusion and omission reasons, budgets, provider configuration, applicable focus profile, tool policy, and run identity. Context becomes an inspectable build artifact rather than an ephemeral prompt.
+Every governed model call carries a persisted `ContextManifest` identifying exact memory
+revisions, retrieval policy, inclusion and omission reasons, budgets, and run identity.
+Context is an inspectable build artifact rather than an ephemeral prompt.
 
 ### Provider-neutral chat
 
-Allowlisted local and hosted providers will implement the same reviewed contracts for streaming, cancellation, usage, typed failures, citations, and provider/model provenance. Models are replaceable compute; they do not own customer memory or governance.
+The fake, Ollama, and reviewed OpenAI-compatible adapters share the same memory-authority,
+citation, typed-failure, and provider/model provenance boundary. Models are replaceable
+compute; they do not own customer memory or governance. Broader streaming and provider
+compatibility remain evidence-gated.
 
 ### Memory Lattice and review workspace
 
-The first-party interface will expose graph and list navigation, provenance, authority, contradictions, temporal history, review queues, context inclusion, and run references. Every visible state must correspond to typed backend state; graph prominence must not imply truth.
+The first-party interface exposes graph/list navigation, provenance, authority, review
+queues, context inclusion, run references, evaluation evidence, and verified recovery
+manifests. Every visible state corresponds to typed backend state; graph prominence does not
+imply truth.
 
 ### Governed ingestion
 
-Explicit browser selection and configured connectors feed immutable content-addressed storage, bounded validation, source snapshots, candidate associations, and human review. Import or synchronization never silently approves or rewrites canonical memory.
+Explicit browser selection and configured connectors feed immutable content-addressed
+storage, bounded validation, source snapshots, candidate associations, and human review.
+Import or synchronization never silently approves or rewrites canonical memory.
 
 ### Run observability and replay
 
-The run inspector will connect user request, retrieval, context, provider call, tool request, observation, response, proposal, and review outcome into one inspectable trajectory with budgets, failures, cancellation, and restart/replay state.
+The run inspector connects user request, retrieval, context, provider call, bounded tool
+request, observation, response, and restart state into one inspectable trajectory with exact
+budgets and failures.
 
 ### Bounded capability broker
 
-Tools will be exposed through typed, least-privilege grants with resource scope, actor, expiry, budget, cancellation, output limits, and complete event provenance. The first pilot action remains a narrow read-only tool rather than arbitrary host execution.
+The first pilot tool, `file.read`, is exposed through typed single-use grants with resource
+scope, actor, expiry, byte limits, and event provenance. Arbitrary host execution remains
+outside the implemented boundary.
 
 ### Memory Focus
 
-After authority-aware retrieval and context manifests are implemented, customers may use bounded focus levels from `-2` to `+2` to emphasize already eligible memory. Focus remains separate from truth, approval, authorization, relevance, freshness, confidence, contradiction handling, and explicit context pinning.
+Memory Focus remains deferred. If validated, bounded focus levels may emphasize already
+eligible memory but must remain separate from truth, approval, authorization, freshness,
+contradiction handling, and explicit context pinning.
 
 ## Customer outcomes
 

@@ -78,6 +78,11 @@ At most three workstreams may be active:
 
 ## Task A3: Rewrite onboarding around one outcome
 
+**Status:** Implemented; the exact documented command completed in 5.594 seconds with three
+distinct client processes, 40 context tokens, no transcript replay and `supersedes` lineage.
+Relative Markdown links resolve. The full candidate gate passes locally (Python 355 passed /
+4 skipped; frontend 61 passed). Immutable-range and Buildbox exact-SHA verification remain.
+
 **Objective:** Reduce the current private-pilot-heavy README to a five-minute community path while retaining advanced runbooks.
 
 **Files:**
@@ -87,6 +92,15 @@ At most three workstreams may be active:
 - Modify: `docs/build-plan.md`
 
 **Finish line:** The main README leads with Project Memory, gives one local command, shows one multi-agent continuity demo, and moves private-pilot infrastructure detail into linked documentation.
+
+**Implemented artifacts:**
+- Product-first root README reduced from broad private-pilot setup to the verified continuity
+  outcome, one command, authority boundary, compatibility receipts and concise development
+  gate.
+- `docs/project-memory-quickstart.md` with prerequisites, timed demo, expected evidence, real
+  MCP command, four-tool authority table, compatibility limits and troubleshooting.
+- Advanced browser/private-pilot/recovery details remain in linked runbooks rather than the
+  first-use path.
 
 ---
 

@@ -123,6 +123,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 | Longitudinal public evaluation | implemented | Pinned public fixture, equal-budget baselines, deterministic report and offline smoke |
 | Browser evidence and recovery operations | implemented | Authenticated fixed-location evaluation evidence exposes explicit unavailable/current/stale states; verified latest exports and exact-ID human restore remain server-managed |
 | Governed Project Memory MCP sidecar | implemented | Local stdio reads return deterministic approved context; idempotent `remember` and `correct` create provenance-bearing candidates requiring external promotion; the pinned independent-process demo and direct Hermes/OpenCode receipts are executable |
+| Five-minute Project Memory onboarding | implemented | The root README leads with one account-free local command and links a bounded quickstart, direct compatibility receipts and advanced runbooks |
 | Physical-intelligence dataset inspection | planned | Evidence-gated read-only discovery; no robot or equipment control |
 | Semantic retrieval, training, multi-agent and cloud scale | deferred | Add only after measured product need |
 <!-- capability-ledger:end -->
@@ -132,7 +133,7 @@ Adopt the useful customer primitives of Hermes—workspaces, chat sessions, proj
 1. **Browser-complete governed memory journey — release candidate complete:** authenticate one local workspace; expose native create, explicit source sync, configured-scope import and proposal review; preserve exact context/run transport contracts.
 2. **Crash-safe provider and governed tool trajectory — complete:** persist intent before dispatch, record truthful provider/actor provenance, reconstruct multi-call runs and connect one single-use `file.read`.
 3. **Reproducible private pilot and measured value — implementation complete:** versioned recovery, bounded deployment, deterministic longitudinal evaluation, browser evidence summaries and human-controlled recovery operations are executable.
-4. **Open Project Memory wedge — demo complete, external alpha active:** the public boundary, governed MCP/CLI sidecar, pinned independent-process continuity demo and direct Hermes/OpenCode receipts are executable; bounded external-user validation remains.
+4. **Open Project Memory wedge — onboarding and demo complete, external alpha active:** the public boundary, one-command quickstart, governed MCP/CLI sidecar, pinned independent-process continuity demo and direct Hermes/OpenCode receipts are executable; bounded external-user validation remains.
 
 Each milestone must produce a coherent UI path backed by real typed API behavior, pass the deterministic candidate and immutable-range gates, and remain demoable without fabricated capability.
 
