@@ -410,6 +410,16 @@ def test_governed_correction_reconstructs_current_recall_and_old_lineage(
             "content_hash": original["content_hash"],
         },
     ).model_dump(mode="json")
+    explained_replacement = execute_project_memory_tool(
+        data_root,
+        "explain",
+        {
+            "schema_version": 1,
+            "request_id": "evt_01J0000000000000000000000X",
+            "record_id": correction["replacement_record_id"],
+            "content_hash": correction["replacement_content_hash"],
+        },
+    ).model_dump(mode="json")
 
     assert [record["record_id"] for record in recalled["records"]] == [
         correction["replacement_record_id"]
@@ -421,4 +431,11 @@ def test_governed_correction_reconstructs_current_recall_and_old_lineage(
         "content_hash": correction["replacement_content_hash"],
         "authority_state": "approved",
         "relationship": "superseded_by",
+    }
+    assert explained_replacement["authority_state"] == "approved"
+    assert explained_replacement["lineage"][1] == {
+        "record_id": original["record_id"],
+        "content_hash": original["content_hash"],
+        "authority_state": "superseded",
+        "relationship": "supersedes",
     }

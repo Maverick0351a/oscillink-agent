@@ -3,7 +3,9 @@
 Status: **governed implementation available**. The local stdio server advertises and
 implements `remember`, `recall`, `correct`, and `explain`. A subprocess integration test
 exercises initialization, capability listing, structured recall, and candidate creation
-through the official Python MCP client. Writes are candidate-only and cannot self-approve.
+through the official Python MCP client. The public continuity demo also exercises isolated
+client processes plus direct Hermes discovery and an OpenCode recall/explain task. Writes
+are candidate-only and cannot self-approve.
 
 The executable contract is `oscillink_agent.integrations.mcp.contracts`. This document explains its authority and security semantics.
 
@@ -27,7 +29,9 @@ The first implementation uses local MCP over standard input/output.
 - No listener, account, external credential, or network access is required.
 - One process is bound to one configured local workspace.
 - Workspace, actor, and client identity are server-derived configuration. They are not accepted as tool arguments.
-- Every request carries `schema_version: 1` and an `evt_...` request ID for provenance and idempotency.
+- Every request carries `schema_version: 1` and a unique Crockford-ULID-shaped `evt_...`
+  request ID for provenance and idempotency. A client must not reuse one request identity
+  for different arguments.
 - JSON objects reject unknown fields. Persisted values are immutable and strictly typed.
 - Public responses never include raw host paths, credentials, environment values, stack traces, or raw exceptions.
 
@@ -76,7 +80,11 @@ Required fields:
 - `record_id`
 - `content_hash`
 
-The hash binds the request to one exact revision. The lineage begins with that exact requested revision and then uses typed relationships such as `source`, `supersedes`, `superseded_by`, or `contradicts`.
+The hash binds the request to one exact revision. The lineage begins with that exact
+requested revision and then uses typed relationships such as `source`, `supersedes`,
+`superseded_by`, or `contradicts`. Explaining a superseded revision points forward to its
+replacement. Explaining a correction replacement points backward to the exact revision it
+supersedes, allowing a fresh client to reconstruct correction history from current recall.
 
 ## Successful responses
 
@@ -169,7 +177,8 @@ The initial contract does not include:
 - automatic high-risk promotion;
 - robot, ROS, equipment, or actuator control.
 
-Any future wire change requires a schema-version decision and updated contract tests. The
-official Python MCP client is the only exercised client in this milestone. Direct
-compatibility with any other client may be claimed only after that client is exercised
-through the installed stdio entry point.
+Any future wire change requires a schema-version decision and updated contract tests.
+Compatibility claims remain client-specific: the official Python MCP client drives the
+deterministic harness, Hermes native MCP discovery is verified, and OpenCode has completed a
+synthetic recall/explain continuation task. Other clients may be claimed only after direct
+exercise through the installed stdio entry point.

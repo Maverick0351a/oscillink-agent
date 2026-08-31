@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "scenario_id": "project-memory-continuity-v1",
+  "memories": [
+    {
+      "key": "build-verification",
+      "title": "Build verification",
+      "content": "Run CI before release.",
+      "category": "governance",
+      "domains": ["software"],
+      "topics": ["build", "verification", "release"],
+      "source_ref": "doc_01J00000000000000000000010"
+    },
+    {
+      "key": "failed-migration",
+      "title": "Failed migration approach",
+      "content": "Do not retry transcript-only continuity; it lost corrections after compaction.",
+      "category": "governance",
+      "domains": ["software"],
+      "topics": ["failed", "migration", "continuity", "compaction"],
+      "source_ref": "doc_01J00000000000000000000011"
+    },
+    {
+      "key": "memory-authority",
+      "title": "Project memory authority",
+      "content": "Only externally approved memory is eligible for agent context.",
+      "category": "governance",
+      "domains": ["software"],
+      "topics": ["project", "memory", "authority", "context"],
+      "source_ref": "doc_01J00000000000000000000012"
+    },
+    {
+      "key": "release-channel",
+      "title": "Release channel",
+      "content": "Publish alpha builds to the preview channel before stable promotion.",
+      "category": "governance",
+      "domains": ["software"],
+      "topics": ["release", "channel", "alpha", "preview"],
+      "source_ref": "doc_01J00000000000000000000013"
+    }
+  ],
+  "correction": {
+    "target_key": "build-verification",
+    "content": "Run immutable Windows, Buildbox Linux, and hosted CI gates before release.",
+    "reason": "CI alone does not prove local or independent Linux reproducibility."
+  },
+  "recall_query": "project memory authority context build verification release channel alpha preview failed migration continuity compaction",
+  "token_budget": 4096
+}

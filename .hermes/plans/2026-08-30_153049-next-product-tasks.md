@@ -173,14 +173,21 @@ At most three workstreams may be active:
 
 ## Task B4: Build the five-minute continuity demonstration
 
+**Status:** Implemented; local candidate verification passed with Python 353 passed / 4
+skipped and frontend 54 passed. Immutable-range and Buildbox exact-SHA verification remain.
+
 **Objective:** Prove the public promise with two real compatible clients before advertising five integrations.
 
 **Artifacts:**
 - Create: `examples/project-memory-demo/README.md`
 - Create: `examples/project-memory-demo/project-fixture/`
 - Create: `scripts/run_project_memory_demo.py`
+- Create: `scripts/project_memory_demo_client.py`
 - Create: `tests/acceptance/test_project_memory_demo.py`
+- Add: `examples/project-memory-demo/manifest.json`
 - Add a pinned public evaluation case without agent-readable labels.
+- Modify `explain` so a current correction replacement exposes its exact prior revision
+  through a typed `supersedes` lineage edge.
 
 **Scenario:**
 1. Agent A learns three project decisions and one failed approach.
@@ -193,6 +200,16 @@ At most three workstreams may be active:
 **Integration order:**
 1. Hermes plus one independently testable MCP coding client.
 2. Add Claude Code, OpenCode, Cline, Cursor, or Codex only after each compatibility path is exercised directly.
+
+**Direct receipts:**
+- Hermes native MCP discovers all four tools in an isolated profile.
+- OpenCode 1.18.25 performs current recall and current-revision explain through native MCP
+  using synthetic public data and an account-free model.
+- A separately delegated GPT-5.6-Sol Hermes Agent B recovers current decisions, exact
+  citations and lineage through a fresh official MCP client without expected answers.
+- Codex remains unclaimed because its standalone CLI is not authenticated.
+- The deterministic independent-process harness is the timed artifact; the exploratory
+  delegated-agent receipt exceeded five minutes and is not counted toward that claim.
 
 **Finish line:** Clean-machine setup to useful cited recall takes under five minutes, requires no account, and the acceptance test reproduces the same manifest under the same inputs.
 

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "scenario_id": "project-memory-continuity-v1",
+  "fixture": "project-fixture/scenario.json",
+  "fixture_sha256": "c13b054b7db2f79bcd9468eae53e4758c70a9326ab4a6a3b60436b190495cd63",
+  "transport": "stdio",
+  "declared_context_budget_tokens": 4096,
+  "claims": {
+    "candidate_only_agent_writes": true,
+    "external_governance_promotion": true,
+    "two_independent_client_processes": true,
+    "fresh_server_process_per_phase": true,
+    "transcript_replay_required": false,
+    "two_branded_agent_integrations": false,
+    "model_answer_quality_evaluated": false
+  }
+}

@@ -151,6 +151,23 @@ def _explain(
             relationship=LineageRelationship.REQUESTED,
         )
     ]
+    if (
+        revision.correction_target_id is not None
+        and revision.correction_expected_hash is not None
+    ):
+        correction_target = repository.get_revision(
+            revision.correction_target_id,
+            revision.correction_expected_hash,
+        )
+        if correction_target is not None:
+            lineage.append(
+                MemoryLineageEntry(
+                    record_id=correction_target.id,
+                    content_hash=correction_target.content_hash,
+                    authority_state=correction_target.authority_state,
+                    relationship=LineageRelationship.SUPERSEDES,
+                )
+            )
     review = repository.latest_review(revision.id, revision.content_hash)
     if review is not None and review.replacement_record_id is not None:
         replacement = repository.get(review.replacement_record_id)
