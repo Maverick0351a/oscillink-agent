@@ -121,6 +121,10 @@ At most three workstreams may be active:
 
 ## Task B2: Implement a read-only MCP continuity slice
 
+**Status:** Completed in `3e462f6`; final paths use
+`src/oscillink_agent/integrations/mcp/cli.py` and
+`tests/integration/test_project_memory_mcp.py`.
+
 **Objective:** Let one compatible agent call `recall` and `explain` against the existing approved memory/context compiler.
 
 **Likely files:**
@@ -144,6 +148,8 @@ At most three workstreams may be active:
 **Finish line:** One local command starts a read-only MCP server and a real subprocess client retrieves approved, cited project context.
 
 ## Task B3: Add governed `remember` and `correct`
+
+**Status:** Implemented and candidate-verified locally; pending immutable-range verification.
 
 **Objective:** Complete the cross-agent learning loop without silent canonical mutation.
 

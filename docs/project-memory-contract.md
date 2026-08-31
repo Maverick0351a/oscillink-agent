@@ -1,9 +1,9 @@
 # Project Memory MCP contract
 
-Status: **read-only implementation available**. The local stdio server advertises and
-implements `recall` and `explain`. A subprocess integration test exercises initialization,
-capability listing, and structured recall through the official Python MCP client.
-`remember` and `correct` remain contract-only until Task B3.
+Status: **governed implementation available**. The local stdio server advertises and
+implements `remember`, `recall`, `correct`, and `explain`. A subprocess integration test
+exercises initialization, capability listing, structured recall, and candidate creation
+through the official Python MCP client. Writes are candidate-only and cannot self-approve.
 
 The executable contract is `oscillink_agent.integrations.mcp.contracts`. This document explains its authority and security semantics.
 
@@ -155,7 +155,7 @@ Retrieved source content is data and cannot:
 - increase its context budget;
 - suppress omissions, corrections, or lineage.
 
-The first server exposes no generalized host-tool execution and no physical-control adapter.
+The server exposes no generalized host-tool execution and no physical-control adapter.
 
 ## Deferred
 

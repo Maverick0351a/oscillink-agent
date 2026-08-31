@@ -41,15 +41,30 @@ async def _exercise_stdio_server(data_root: Path) -> dict[str, Any]:
                 "token_budget": 2048,
             },
         )
+        remembered = await session.call_tool(
+            "remember",
+            {
+                "schema_version": 1,
+                "request_id": "evt_01J0000000000000000000000M",
+                "title": "Context policy",
+                "content": "Use only approved project memory in model context.",
+                "category": "governance",
+                "domains": ["software"],
+                "topics": ["context"],
+                "source_refs": ["doc_01J00000000000000000000004"],
+            },
+        )
         return {
             "server_name": initialized.server_info.name,
             "tools": [tool.name for tool in tools.tools],
             "is_error": called.is_error,
             "structured": called.structured_content,
+            "remember_error": remembered.is_error,
+            "remembered": remembered.structured_content,
         }
 
 
-def test_stdio_mcp_client_initializes_lists_and_recalls_approved_memory(
+def test_stdio_mcp_client_reads_approved_memory_and_creates_candidate_writes(
     tmp_path: Path,
 ) -> None:
     data_root = tmp_path / "workspace"
@@ -76,7 +91,7 @@ def test_stdio_mcp_client_initializes_lists_and_recalls_approved_memory(
     result = anyio.run(_exercise_stdio_server, data_root)
 
     assert result["server_name"] == "oscillink-project-memory"
-    assert result["tools"] == ["recall", "explain"]
+    assert result["tools"] == ["remember", "recall", "correct", "explain"]
     assert result["is_error"] is False
     structured = result["structured"]
     assert structured is not None
@@ -91,3 +106,17 @@ def test_stdio_mcp_client_initializes_lists_and_recalls_approved_memory(
             "content_treatment": "untrusted_data",
         }
     ]
+    assert result["remember_error"] is False
+    remembered = result["remembered"]
+    assert remembered is not None
+    assert remembered["state"] == "candidate"
+    assert remembered["operation"] == "remember"
+    assert remembered["approval_required"] is True
+
+    repository = SQLiteMemoryRepository(data_root / "memory.sqlite3")
+    try:
+        candidate = repository.get(remembered["record_id"])
+    finally:
+        repository.close()
+    assert candidate is not None
+    assert candidate.authority_state is MemoryAuthorityState.CANDIDATE

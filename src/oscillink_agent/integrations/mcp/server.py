@@ -1,6 +1,7 @@
-"""Read-only local stdio MCP adapter for governed Project Memory."""
+"""Local stdio MCP adapter for governed Project Memory."""
 
 import hashlib
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,12 @@ from mcp.server import Server, ServerRequestContext
 from pydantic import TypeAdapter
 
 from oscillink_agent.context.compiler import compile_context
+from oscillink_agent.domain.events import ActorId
 from oscillink_agent.integrations.mcp.contracts import (
+    CandidateResponse,
+    CorrectionResponse,
+    CorrectRequest,
+    CorrectToolResult,
     ExplainRequest,
     ExplainResponse,
     ExplainToolResult,
@@ -24,11 +30,14 @@ from oscillink_agent.integrations.mcp.contracts import (
     RecallRequest,
     RecallResponse,
     RecallToolResult,
+    RememberRequest,
+    RememberToolResult,
     UnavailableReason,
     UnavailableResponse,
 )
 from oscillink_agent.memory.repository import (
     MemoryAuthorityState,
+    MemoryCreateConflictError,
     ProductMemoryRecord,
     SQLiteMemoryRepository,
 )
@@ -37,6 +46,7 @@ from oscillink_agent.retrieval.service import rank_memory_records
 ReadOnlyToolResult = (
     RecallResponse | ExplainResponse | UnavailableResponse | FailureResponse
 )
+ProjectMemoryToolResult = ReadOnlyToolResult | CandidateResponse | CorrectionResponse
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 
@@ -209,6 +219,44 @@ def list_read_only_tools() -> types.ListToolsResult:
     )
 
 
+def list_project_memory_tools() -> types.ListToolsResult:
+    """Return governed reads and candidate-only writes implemented by the server."""
+
+    read_tools = {tool.name: tool for tool in list_read_only_tools().tools}
+    write_annotations = types.ToolAnnotations(
+        read_only_hint=False,
+        destructive_hint=False,
+        idempotent_hint=True,
+        open_world_hint=False,
+    )
+    return types.ListToolsResult(
+        tools=[
+            types.Tool(
+                name="remember",
+                title="Propose project memory",
+                description=(
+                    "Create a provenance-bearing candidate that requires external approval."
+                ),
+                input_schema=RememberRequest.model_json_schema(),
+                output_schema=_mcp_output_schema(RememberToolResult),
+                annotations=write_annotations,
+            ),
+            read_tools["recall"],
+            types.Tool(
+                name="correct",
+                title="Propose a project-memory correction",
+                description=(
+                    "Create a replacement candidate bound to one exact prior revision."
+                ),
+                input_schema=CorrectRequest.model_json_schema(),
+                output_schema=_mcp_output_schema(CorrectToolResult),
+                annotations=write_annotations,
+            ),
+            read_tools["explain"],
+        ]
+    )
+
+
 def execute_read_only_tool(
     data_root: Path,
     tool_name: str,
@@ -279,26 +327,178 @@ def execute_read_only_tool(
         repository.close()
 
 
-def create_read_only_server(data_root: Path) -> Server[Any]:
-    """Construct a local server bound to one server-selected workspace data root."""
+def execute_project_memory_tool(
+    data_root: Path,
+    tool_name: str,
+    arguments: dict[str, object],
+    *,
+    actor_id: ActorId = "model_mcp_client",
+) -> ProjectMemoryToolResult:
+    """Validate and execute one implemented Project Memory operation."""
 
+    if tool_name not in {ProjectMemoryTool.REMEMBER, ProjectMemoryTool.CORRECT}:
+        return execute_read_only_tool(data_root, tool_name, arguments)
+    try:
+        request = (
+            RememberRequest.model_validate_json(json.dumps(arguments))
+            if tool_name == ProjectMemoryTool.REMEMBER
+            else CorrectRequest.model_validate_json(json.dumps(arguments))
+        )
+    except ValueError:
+        return FailureResponse(
+            schema_version=1,
+            state="failure",
+            operation=ProjectMemoryTool(tool_name),
+            code=FailureCode.INVALID_REQUEST,
+            retryable=False,
+        )
+
+    content_hash = "sha256:" + hashlib.sha256(request.content.encode()).hexdigest()
+    operation = ProjectMemoryTool(tool_name)
+    purpose = (
+        "remember-candidate"
+        if operation is ProjectMemoryTool.REMEMBER
+        else "correct-candidate"
+    )
+    record_id = _derived_id(request.request_id, "mem", purpose)
+    repository = SQLiteMemoryRepository(data_root.resolve() / "memory.sqlite3")
+    try:
+        if isinstance(request, CorrectRequest):
+            target = repository.get(request.target_record_id)
+            if target is None or target.content_hash != request.expected_content_hash:
+                return FailureResponse(
+                    schema_version=1,
+                    state="failure",
+                    operation=ProjectMemoryTool.CORRECT,
+                    code=FailureCode.REVISION_CONFLICT,
+                    retryable=False,
+                )
+        existing = repository.get(record_id)
+        if existing is not None:
+            if (
+                existing.title != request.title
+                or existing.content != request.content
+                or existing.category is not request.category
+                or existing.domains != request.domains
+                or existing.topics != request.topics
+                or existing.content_hash != content_hash
+                or existing.source_refs != request.source_refs
+                or existing.created_by != actor_id
+                or existing.creation_request_id != request.request_id
+                or existing.correction_target_id
+                != (
+                    request.target_record_id if isinstance(request, CorrectRequest) else None
+                )
+                or existing.correction_expected_hash
+                != (
+                    request.expected_content_hash
+                    if isinstance(request, CorrectRequest)
+                    else None
+                )
+                or existing.correction_reason
+                != (request.reason if isinstance(request, CorrectRequest) else None)
+            ):
+                return FailureResponse(
+                    schema_version=1,
+                    state="failure",
+                    operation=operation,
+                    code=FailureCode.REQUEST_CONFLICT,
+                    retryable=False,
+                )
+            record = existing
+        else:
+            try:
+                record = repository.create_native(
+                    record_id=record_id,
+                    title=request.title,
+                    content=request.content,
+                    category=request.category,
+                    domains=request.domains,
+                    topics=request.topics,
+                    content_hash=content_hash,
+                    source_refs=request.source_refs,
+                    created_by=actor_id,
+                    creation_request_id=request.request_id,
+                    correction_target_id=(
+                        request.target_record_id
+                        if isinstance(request, CorrectRequest)
+                        else None
+                    ),
+                    correction_expected_hash=(
+                        request.expected_content_hash
+                        if isinstance(request, CorrectRequest)
+                        else None
+                    ),
+                    correction_reason=(
+                        request.reason if isinstance(request, CorrectRequest) else None
+                    ),
+                )
+            except MemoryCreateConflictError:
+                return FailureResponse(
+                    schema_version=1,
+                    state="failure",
+                    operation=operation,
+                    code=FailureCode.REQUEST_CONFLICT,
+                    retryable=False,
+                )
+    finally:
+        repository.close()
+    if isinstance(request, CorrectRequest):
+        return CorrectionResponse(
+            schema_version=1,
+            state="candidate",
+            operation=ProjectMemoryTool.CORRECT,
+            request_id=request.request_id,
+            target_record_id=request.target_record_id,
+            expected_content_hash=request.expected_content_hash,
+            replacement_record_id=record.id,
+            replacement_content_hash=record.content_hash,
+            approval_required=True,
+        )
+    return CandidateResponse(
+        schema_version=1,
+        state="candidate",
+        operation=ProjectMemoryTool.REMEMBER,
+        request_id=request.request_id,
+        record_id=record.id,
+        content_hash=record.content_hash,
+        approval_required=True,
+    )
+
+
+def _create_server(
+    data_root: Path,
+    *,
+    include_candidate_writes: bool,
+    actor_id: ActorId,
+) -> Server[Any]:
     workspace_root = data_root.resolve()
 
     async def on_list_tools(
         _context: ServerRequestContext[Any],
         _params: types.PaginatedRequestParams | None,
     ) -> types.ListToolsResult:
-        return list_read_only_tools()
+        return (
+            list_project_memory_tools()
+            if include_candidate_writes
+            else list_read_only_tools()
+        )
 
     async def on_call_tool(
         _context: ServerRequestContext[Any],
         params: types.CallToolRequestParams,
     ) -> types.CallToolResult:
         try:
-            result = execute_read_only_tool(
-                workspace_root,
-                params.name,
-                dict(params.arguments or {}),
+            arguments = dict(params.arguments or {})
+            result = (
+                execute_project_memory_tool(
+                    workspace_root,
+                    params.name,
+                    arguments,
+                    actor_id=actor_id,
+                )
+                if include_candidate_writes
+                else execute_read_only_tool(workspace_root, params.name, arguments)
             )
         except Exception:
             try:
@@ -324,4 +524,28 @@ def create_read_only_server(data_root: Path) -> Server[Any]:
         description="Local governed Project Memory for long-running AI agents",
         on_list_tools=on_list_tools,
         on_call_tool=on_call_tool,
+    )
+
+
+def create_read_only_server(data_root: Path) -> Server[Any]:
+    """Construct the historical B2 read-only server for contract compatibility."""
+
+    return _create_server(
+        data_root,
+        include_candidate_writes=False,
+        actor_id="model_mcp_client",
+    )
+
+
+def create_project_memory_server(
+    data_root: Path,
+    *,
+    actor_id: ActorId = "model_mcp_client",
+) -> Server[Any]:
+    """Construct the governed server with reads and candidate-only writes."""
+
+    return _create_server(
+        data_root,
+        include_candidate_writes=True,
+        actor_id=actor_id,
     )

@@ -11,7 +11,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from oscillink_agent.domain.events import Digest, FrozenModel
+from oscillink_agent.domain.context import RecordId
+from oscillink_agent.domain.events import ActorId, Digest, EventId, FrozenModel
 from oscillink_agent.memory.obsidian import (
     IndexedObsidianNote,
     MemoryCategory,
@@ -29,6 +30,10 @@ _IDEMPOTENCY_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 
 class MemoryRecordNotFoundError(ValueError):
     """A review targeted a record absent from the product repository."""
+
+
+class MemoryCreateConflictError(ValueError):
+    """An explicit record identity was reused for incompatible content."""
 
 
 class MemoryReviewConflictError(ValueError):
@@ -93,6 +98,12 @@ class ProductMemoryRecord(FrozenModel):
     wikilinks: tuple[str, ...] = ()
     classification_basis: tuple[str, ...] = ()
     architecture_node_ids: tuple[ArchitectureNodeId, ...] = ()
+    source_refs: tuple[RecordId, ...] = ()
+    created_by: ActorId | None = None
+    creation_request_id: EventId | None = None
+    correction_target_id: MemoryRecordId | None = None
+    correction_expected_hash: Digest | None = None
+    correction_reason: str | None = None
 
 
 class MemorySourceSyncResult(FrozenModel):
@@ -230,6 +241,7 @@ class SQLiteMemoryRepository:
     def create_native(
         self,
         *,
+        record_id: MemoryRecordId | None = None,
         title: str,
         content: str,
         category: MemoryCategory,
@@ -237,9 +249,15 @@ class SQLiteMemoryRepository:
         topics: tuple[str, ...],
         content_hash: Digest,
         architecture_node_ids: tuple[ArchitectureNodeId, ...] = (),
+        source_refs: tuple[RecordId, ...] = (),
+        created_by: ActorId | None = None,
+        creation_request_id: EventId | None = None,
+        correction_target_id: MemoryRecordId | None = None,
+        correction_expected_hash: Digest | None = None,
+        correction_reason: str | None = None,
     ) -> ProductMemoryRecord:
         record = ProductMemoryRecord(
-            id=_new_record_id(),
+            id=_new_record_id() if record_id is None else record_id,
             title=title,
             content=content,
             authority_state=MemoryAuthorityState.CANDIDATE,
@@ -253,8 +271,50 @@ class SQLiteMemoryRepository:
             content_hash=content_hash,
             classification_basis=("customer:native",),
             architecture_node_ids=architecture_node_ids,
+            source_refs=source_refs,
+            created_by=created_by,
+            creation_request_id=creation_request_id,
+            correction_target_id=correction_target_id,
+            correction_expected_hash=correction_expected_hash,
+            correction_reason=correction_reason,
         )
+        if record_id is not None:
+            return self._insert_explicit_record(record)
         self._write_record(record)
+        return record
+
+    def _insert_explicit_record(
+        self,
+        record: ProductMemoryRecord,
+    ) -> ProductMemoryRecord:
+        encoded = record.model_dump_json()
+        try:
+            self._connection.execute("BEGIN IMMEDIATE")
+            existing_row = self._connection.execute(
+                "SELECT record_json FROM memory_records WHERE record_id = ?",
+                (record.id,),
+            ).fetchone()
+            if existing_row is not None:
+                existing = ProductMemoryRecord.model_validate_json(str(existing_row[0]))
+                if existing != record:
+                    raise MemoryCreateConflictError(record.id)
+                self._connection.commit()
+                return existing
+            self._connection.execute(
+                "INSERT INTO memory_records (record_id, record_json) VALUES (?, ?)",
+                (record.id, encoded),
+            )
+            self._connection.execute(
+                """
+                INSERT INTO memory_record_revisions (record_id, record_json)
+                VALUES (?, ?)
+                """,
+                (record.id, encoded),
+            )
+        except Exception:
+            self._connection.rollback()
+            raise
+        self._connection.commit()
         return record
 
     def _write_record(self, record: ProductMemoryRecord) -> None:

@@ -276,3 +276,11 @@ ExplainToolResult = Annotated[
     ExplainResponse | UnavailableResponse | FailureResponse,
     Field(discriminator="state"),
 ]
+RememberToolResult = Annotated[
+    CandidateResponse | FailureResponse,
+    Field(discriminator="state"),
+]
+CorrectToolResult = Annotated[
+    CorrectionResponse | FailureResponse,
+    Field(discriminator="state"),
+]

@@ -10,10 +10,10 @@ making a model provider, transcript, filename, or vector database the source of 
 
 The existing alpha provides the governed foundation: immutable memory revisions,
 approved-only deterministic context, provenance-bearing citations, bounded capabilities,
-inspectable runs, reproducible evaluation, and versioned workspace recovery. A local
-read-only MCP stdio server now implements `recall` and `explain` and is exercised with the
-official Python MCP client. The `remember` and `correct` contracts exist but are not yet
-advertised by the server.
+inspectable runs, reproducible evaluation, and versioned workspace recovery. A local MCP
+stdio server implements governed `remember`, `recall`, `correct`, and `explain` operations
+and is exercised with the official Python MCP client. Writes create provenance-bearing
+candidates only; promotion remains an external governed action.
 
 > **Current status:** alpha research and private-pilot software. Do not use it to control
 > robots, industrial equipment, or other safety-critical systems.
@@ -42,9 +42,9 @@ The complete product description is in
 Oscillink Agent is a governed-agent `v0.2.0-alpha` research release candidate. The
 browser-complete governed-memory journey, crash-safe provider/tool trajectory,
 and versioned workspace recovery path are executable from an empty data root.
-The deterministic longitudinal public evaluation harness is also implemented. The
-active product milestone is to expose this foundation through a local Project Memory
-sidecar and prove corrected continuity across two independently exercised agent clients.
+The deterministic longitudinal public evaluation harness and governed Project Memory MCP
+sidecar are also implemented. The active product milestone is to prove corrected continuity
+across two independently exercised agent clients.
 
 The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The authenticated browser exposes that synchronization only as an explicit confirmed action and reports durable created/revised/unchanged/missing/issue accounting without revealing the configured source path. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 
@@ -55,11 +55,10 @@ The authenticated browser enumerates only server-configured portable import targ
 The current critical path is:
 
 1. make the repository safe and understandable for public contributors;
-2. extend the read-only MCP sidecar with governed candidate writes;
-3. prove a five-minute compaction, correction, and client-switch demonstration;
-4. validate the workflow with external coding-agent users.
+2. prove a five-minute compaction, correction, and client-switch demonstration;
+3. validate the workflow with external coding-agent users.
 
-## Read-only Project Memory MCP
+## Governed Project Memory MCP
 
 From a source checkout, start the account-free local stdio server with one command:
 
@@ -68,12 +67,14 @@ uv run oscillink-project-memory --data-root /path/to/oscillink-workspace
 ```
 
 The human selects the data root in client configuration; tool requests cannot select
-another workspace or actor identity. The process opens no network port and advertises only
-`recall` and `explain`, with read-only, non-destructive, idempotent, closed-world MCP hints.
-Returned memory text remains untrusted input. Its manifest identifies the exact approved
-revisions, token budget, omissions, and exclusion counts.
+another workspace or actor identity. The process opens no network port and advertises
+`remember`, `recall`, `correct`, and `explain`. Read tools are marked read-only; write tools
+are non-destructive, idempotent candidate creation and cannot self-approve. Returned memory
+text remains untrusted input. Its manifest identifies the exact approved revisions, token
+budget, omissions, and exclusion counts.
 
-This path has been exercised with the official Python MCP client. Compatibility with
+Recall and candidate creation have been exercised with the official Python MCP client.
+Compatibility with
 Claude, Codex, Hermes, OpenCode, or Cline is not claimed until each client is tested.
 
 A read-only physical-intelligence dataset experiment may run as a separate discovery

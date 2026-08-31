@@ -7,7 +7,7 @@ from pathlib import Path
 
 from mcp.server.stdio import stdio_server
 
-from oscillink_agent.integrations.mcp.server import create_read_only_server
+from oscillink_agent.integrations.mcp.server import create_project_memory_server
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -25,7 +25,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 async def _serve(data_root: Path) -> None:
-    server = create_read_only_server(data_root)
+    server = create_project_memory_server(data_root)
     async with stdio_server() as (read_stream, write_stream):
         await server.run(
             read_stream,
