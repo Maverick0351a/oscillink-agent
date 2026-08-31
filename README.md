@@ -45,7 +45,10 @@ and versioned workspace recovery path are executable from an empty data root.
 The deterministic longitudinal public evaluation harness and governed Project Memory MCP
 sidecar are also implemented. The five-minute public demo now proves corrected continuity
 across independent client processes, and direct Hermes/OpenCode compatibility receipts are
-documented. External-user validation remains outstanding.
+documented. The authenticated browser Evidence workspace renders typed evaluation and
+revision evidence plus revalidated export/restore manifests with exact-ID human confirmation;
+see [`docs/browser-evidence.md`](docs/browser-evidence.md). External-user validation remains
+outstanding.
 
 The current foundation includes immutable domain contracts, an append-only SQLite ledger, content-addressed artifacts, governed file imports, product-owned `mem_` identities and immutable revisions, append-only approval/rejection/supersession decisions, native memory creation without Obsidian, restart recovery, and atomic idempotent Obsidian synchronization that preserves product identity across unambiguous source renames while marking disappeared sources as missing. The authenticated browser exposes that synchronization only as an explicit confirmed action and reports durable created/revised/unchanged/missing/issue accounting without revealing the configured source path. The typed Memory Lattice projects candidate, curated, approved, rejected and superseded records with visible source provenance and browser approve/reject controls. The unified web workspace places explicit memory associations inside named System Architecture containers, opens governed record details from each container, incorporates the agent face into Chat, and presents the execution-locked Workspace Terminal as a Chat drawer. Obsidian remains an optional connector rather than the canonical product database or review authority.
 

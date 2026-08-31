@@ -1,0 +1,165 @@
+.evaluation-summary {
+  padding: 18px;
+  border: 1px solid rgb(95 239 255 / 20%);
+  background: linear-gradient(180deg, rgb(8 27 40 / 74%), rgb(4 14 23 / 84%));
+  box-shadow: inset 3px 0 0 rgb(95 239 255 / 42%);
+}
+
+.evaluation-summary-header,
+.evaluation-verdict,
+.evaluation-condition header,
+.evaluation-json summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.evaluation-summary-header {
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgb(95 239 255 / 16%);
+  color: var(--cyan-soft);
+}
+
+.evaluation-summary-header h2 {
+  margin: 4px 0 0;
+  color: var(--text-bright);
+  font-size: 18px;
+  text-wrap: balance;
+}
+
+.evaluation-freshness {
+  padding: 6px 8px;
+  border: 1px solid rgb(95 239 255 / 22%);
+  color: var(--cyan-soft);
+  font: 800 8px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+}
+
+.evaluation-freshness[data-state='stale'] {
+  border-color: rgb(255 190 76 / 32%);
+  color: #ffd27a;
+}
+
+.evaluation-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.evaluation-facts div,
+.evaluation-condition {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgb(95 239 255 / 12%);
+  background: rgb(8 28 40 / 42%);
+}
+
+.evaluation-facts dt {
+  color: var(--cyan-soft);
+  font: 800 8px/1.4 var(--mono);
+  letter-spacing: 0.1em;
+}
+
+.evaluation-facts dd {
+  overflow-wrap: anywhere;
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font: 600 9px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.evaluation-verdict {
+  justify-content: space-between;
+  padding: 10px;
+  border: 1px solid rgb(95 239 255 / 20%);
+  color: var(--cyan-soft);
+  font: 800 9px/1.4 var(--mono);
+}
+
+.evaluation-verdict[data-state='failed'] {
+  border-color: rgb(255 79 216 / 24%);
+  color: var(--magenta-soft);
+}
+
+.evaluation-conditions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.evaluation-condition header {
+  justify-content: space-between;
+  color: var(--text-bright);
+  font: 800 9px/1.4 var(--mono);
+}
+
+.evaluation-condition header span {
+  color: var(--cyan-soft);
+  font-size: 8px;
+}
+
+.evaluation-condition[data-state='failed'] header span,
+.evaluation-error {
+  color: var(--magenta-soft);
+}
+
+.evaluation-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.evaluation-metrics span {
+  padding: 4px 6px;
+  border: 1px solid rgb(95 239 255 / 12%);
+  color: var(--text-dim);
+  font: 700 8px/1.4 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.evaluation-empty,
+.evaluation-error,
+.evaluation-summary > small {
+  color: var(--text-dim);
+  font: 600 10px/1.6 var(--mono);
+  text-wrap: pretty;
+}
+
+.evaluation-json {
+  margin-top: 14px;
+  border-top: 1px solid rgb(95 239 255 / 14%);
+}
+
+.evaluation-json summary {
+  min-height: 40px;
+  color: var(--cyan-soft);
+  font: 800 9px/1.4 var(--mono);
+  cursor: pointer;
+}
+
+.evaluation-json pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid rgb(95 239 255 / 12%);
+  color: var(--text-dim);
+  background: rgb(0 6 12 / 72%);
+  font: 500 9px/1.5 var(--mono);
+  white-space: pre-wrap;
+}
+
+@media (max-width: 760px) {
+  .evaluation-summary-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .evaluation-facts,
+  .evaluation-conditions {
+    grid-template-columns: 1fr;
+  }
+}

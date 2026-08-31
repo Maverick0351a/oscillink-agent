@@ -15,6 +15,7 @@ from oscillink_agent import __version__
 from oscillink_agent.artifact_imports.routes import build_artifact_import_router
 from oscillink_agent.capabilities.routes import build_capability_router
 from oscillink_agent.chat.routes import build_chat_router
+from oscillink_agent.evaluation.routes import build_evaluation_router
 from oscillink_agent.health.routes import build_health_router
 from oscillink_agent.memory.routes import build_memory_router
 from oscillink_agent.proposals.routes import build_proposal_router
@@ -60,6 +61,7 @@ def create_app(
     allowed_origins: tuple[str, ...] | None = None,
     trusted_hosts: tuple[str, ...] | None = None,
     static_root: Path | None = None,
+    code_revision: str | None = None,
 ) -> FastAPI:
     """Create an API without initializing or mutating durable storage."""
 
@@ -115,6 +117,17 @@ def create_app(
         build_status_router(root, workspace_auth=workspace_auth)
     )
     application.include_router(build_workspace_router(root, workspace_auth))
+    application.include_router(
+        build_evaluation_router(
+            root,
+            workspace_auth,
+            code_revision=(
+                code_revision
+                if code_revision is not None
+                else os.environ.get("OSCILLINK_AGENT_CODE_REVISION")
+            ),
+        )
+    )
     application.include_router(
         build_chat_router(
             root,

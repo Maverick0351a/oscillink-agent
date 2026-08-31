@@ -114,6 +114,15 @@ class WorkspaceExportResponse(BaseModel):
     manifest: WorkspaceExportManifest
 
 
+class WorkspaceExportView(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    state: Literal["available", "unavailable"]
+    reason: Literal["export_missing", "export_invalid"] | None
+    export: WorkspaceExportResponse | None
+
+
 class WorkspaceRestoreRequest(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
 

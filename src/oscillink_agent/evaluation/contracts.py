@@ -7,7 +7,7 @@ from enum import StrEnum
 from types import MappingProxyType
 from typing import Annotated, Literal
 
-from pydantic import Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from oscillink_agent.domain.events import FrozenModel
 from oscillink_agent.providers.base import ProviderExecutionIdentity
@@ -121,6 +121,36 @@ class EvaluationReport(FrozenModel):
     budget: EvaluationBudget
     results: tuple[EvaluationResult, ...]
     passed: bool
+
+
+EvaluationReportFreshness = Literal["current", "stale", "unknown"]
+EvaluationReportReason = Literal[
+    "report_missing",
+    "report_invalid",
+    "code_revision_mismatch",
+    "dirty_worktree",
+]
+
+
+class EvaluationReportView(BaseModel):
+    """Authenticated read-only projection of one server-managed report."""
+
+    model_config = ConfigDict(frozen=True, strict=True, extra="forbid")
+
+    schema_version: Literal[1] = 1
+    state: Literal["available", "unavailable"]
+    freshness: EvaluationReportFreshness
+    reason: EvaluationReportReason | None
+    report: EvaluationReport | None
+
+    @field_serializer("report", when_used="json")
+    def serialize_report(
+        self,
+        value: EvaluationReport | None,
+    ) -> dict[str, object] | None:
+        if value is None:
+            return None
+        return value.model_dump(mode="json")
 
 
 class EvaluationFixture(FrozenModel):

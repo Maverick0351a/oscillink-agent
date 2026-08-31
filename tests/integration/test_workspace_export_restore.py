@@ -134,6 +134,27 @@ def test_authenticated_human_can_select_server_managed_export_and_restore(
     )
     auth = {"Authorization": "Bearer test-private-credential"}
 
+    anonymous_latest = request(
+        app,
+        "GET",
+        "/api/v1/workspace/exports/latest",
+    )
+    assert anonymous_latest.status_code == 401
+
+    missing_latest = request(
+        app,
+        "GET",
+        "/api/v1/workspace/exports/latest",
+        headers=auth,
+    )
+    assert missing_latest.status_code == 200
+    assert missing_latest.json() == {
+        "schema_version": 1,
+        "state": "unavailable",
+        "reason": "export_missing",
+        "export": None,
+    }
+
     anonymous = request(
         app,
         "POST",
@@ -161,6 +182,17 @@ def test_authenticated_human_can_select_server_managed_export_and_restore(
     assert export_id == "exp_01J00000000000000000000060"
     assert str(data_root) not in exported.text
 
+    latest = request(
+        app,
+        "GET",
+        "/api/v1/workspace/exports/latest",
+        headers=auth,
+    )
+    assert latest.status_code == 200
+    assert latest.json()["state"] == "available"
+    assert latest.json()["export"] == exported.json()
+    assert str(data_root) not in latest.text
+
     sentinel = data_root / "post-export-sentinel.txt"
     sentinel.write_text("replace me", encoding="utf-8")
     restored = request(
@@ -177,6 +209,23 @@ def test_authenticated_human_can_select_server_managed_export_and_restore(
         assert connection.execute("SELECT value FROM marker").fetchone() == (
             "api-events",
         )
+
+    manifest_path = tmp_path / ".oscillink-exports" / export_id / "manifest.json"
+    manifest_path.write_text('{"schema_version":1}', encoding="utf-8")
+    invalid_latest = request(
+        app,
+        "GET",
+        "/api/v1/workspace/exports/latest",
+        headers=auth,
+    )
+    assert invalid_latest.status_code == 200
+    assert invalid_latest.json() == {
+        "schema_version": 1,
+        "state": "unavailable",
+        "reason": "export_invalid",
+        "export": None,
+    }
+    assert str(manifest_path) not in invalid_latest.text
 
 
 def test_export_rejects_absolute_host_paths_inside_canonical_databases(

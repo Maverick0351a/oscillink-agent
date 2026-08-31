@@ -246,6 +246,15 @@ def _validate_staging(staging: Path, manifest: WorkspaceExportManifest) -> None:
                 raise WorkspaceRestoreError("restored artifact failed content verification")
 
 
+def inspect_workspace_export(bundle_root: Path) -> WorkspaceExportManifest:
+    """Verify a portable export without mutating an active workspace."""
+
+    bundle = bundle_root.resolve(strict=True)
+    manifest = _load_manifest(bundle)
+    _validate_bundle(bundle, manifest)
+    return manifest
+
+
 def restore_workspace(
     bundle_root: Path,
     active_data_root: Path,
@@ -253,8 +262,7 @@ def restore_workspace(
     """Verify in isolation, then atomically replace the inactive workspace directory."""
 
     bundle = bundle_root.resolve(strict=True)
-    manifest = _load_manifest(bundle)
-    _validate_bundle(bundle, manifest)
+    manifest = inspect_workspace_export(bundle)
     active = active_data_root.resolve(strict=False)
     if active == bundle or active.is_relative_to(bundle) or bundle.is_relative_to(active):
         raise WorkspaceRestoreError("restore source and destination must be separate")

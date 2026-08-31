@@ -2,6 +2,7 @@ import {
   Activity,
   Box,
   Database,
+  FlaskConical,
   MessageSquare,
   Send,
   ShieldCheck,
@@ -12,6 +13,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import AgentAvatar from './AgentAvatar'
 import CapabilityApprovalPanel from './CapabilityApprovalPanel'
+import EvaluationSummary from './EvaluationSummary'
 import {
   createChatSessionId,
   decideCapabilityRequest,
@@ -27,6 +29,7 @@ import MemoryWorkspace from './MemoryWorkspace'
 import NextActionPanel from './NextActionPanel'
 import RunInspector from './RunInspector'
 import WorkspaceTerminal from './WorkspaceTerminal'
+import WorkspaceOperations from './WorkspaceOperations'
 import { setWorkspaceCredential } from './workspaceAuth'
 
 interface ComponentStatus {
@@ -67,7 +70,7 @@ export default function App() {
   const [status, setStatus] = useState<ServiceStatus | null>(null)
   const [connectionState, setConnectionState] = useState<ConnectionState>('connecting')
   const [terminalOpen, setTerminalOpen] = useState(false)
-  const [activeView, setActiveView] = useState<'agent' | 'memory'>('agent')
+  const [activeView, setActiveView] = useState<'agent' | 'memory' | 'evidence'>('agent')
   const [chatMessage, setChatMessage] = useState('')
   const [chatResponse, setChatResponse] = useState<ChatMessageResponse | null>(null)
   const [pendingToolRequest, setPendingToolRequest] = useState<PendingToolRequestResponse | null>(null)
@@ -252,6 +255,16 @@ export default function App() {
             <span>Product Memory</span>
             <i aria-hidden="true">02</i>
           </button>
+          <button
+            type="button"
+            aria-label="Open Evidence"
+            aria-pressed={activeView === 'evidence'}
+            onClick={() => setActiveView('evidence')}
+          >
+            <FlaskConical size={18} aria-hidden="true" />
+            <span>Evidence</span>
+            <i aria-hidden="true">03</i>
+          </button>
         </nav>
 
         <div className="foundation-modules">
@@ -277,7 +290,13 @@ export default function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">OSCILLINK // AGENT CONSOLE</p>
-            <p className="view-title">{activeView === 'agent' ? 'Agent Workspace' : 'Product Memory'}</p>
+            <p className="view-title">
+              {activeView === 'agent'
+                ? 'Agent Workspace'
+                : activeView === 'memory'
+                  ? 'Product Memory'
+                  : 'Evidence'}
+            </p>
           </div>
           <section className="status-cluster" aria-label="System status">
             <span className={`status-pill ${connectionState}`}>{apiLabel}</span>
@@ -314,7 +333,12 @@ export default function App() {
         ) : null}
 
         <main className="workspace">
-          {activeView === 'memory' ? (
+          {activeView === 'evidence' ? (
+            <div className="evidence-workspace">
+              <EvaluationSummary enabled={workspaceReady} />
+              <WorkspaceOperations enabled={workspaceReady} />
+            </div>
+          ) : activeView === 'memory' ? (
             <MemoryWorkspace
               latticeState={status?.features.memory_lattice ?? 'planned'}
               mutationsEnabled={workspaceReady}

@@ -54,6 +54,14 @@ function appFetch(input: RequestInfo | URL) {
       domains: [{ domain: 'ai_ml', label: 'AI / ML' }],
       issues: [],
     }
+  } else if (path.endsWith('/evaluations/latest')) {
+    payload = {
+      schema_version: 1,
+      state: 'unavailable',
+      freshness: 'unknown',
+      reason: 'report_missing',
+      report: null,
+    }
   } else if (path.endsWith('/memory/nodes')) {
     payload = {
       schema_version: 1,
@@ -175,6 +183,24 @@ describe('Oscillink Agent shell', () => {
     expect(screen.getByText('4 artifacts')).toBeInTheDocument()
     expect(screen.getByText('Memory READY')).toBeInTheDocument()
     expect(screen.getByText('AUTH READY')).toBeInTheDocument()
+  })
+
+  it('opens authenticated evaluation evidence as a separate workspace', async () => {
+    const fetchMock = vi.fn().mockImplementation(appFetch)
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    expect(await screen.findByText('AUTH READY')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Evidence' }))
+
+    expect(await screen.findByRole('region', { name: 'Evaluation summary' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Workspace operations' })).toBeInTheDocument()
+    expect(screen.getByText('NO EVALUATION REPORT')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/evaluations/latest',
+      expect.objectContaining({ headers: expect.any(Object) }),
+    )
   })
 
   it('keeps mutating controls locked when workspace authentication is locked', async () => {

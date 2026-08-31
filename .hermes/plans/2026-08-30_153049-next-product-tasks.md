@@ -219,6 +219,10 @@ and frontend 54 passed. Both hosts produced reviewed diff SHA-256
 
 ## Task B5: Narrow roadmap Task 3.4 to evidence needed by the demo
 
+**Status:** Implemented; focused tests, live browser-harness acceptance, and the full local
+candidate gate pass (Python 355 passed / 4 skipped; frontend 61 passed). Immutable-range and
+Buildbox exact-SHA verification remain.
+
 **Objective:** Preserve the useful browser control-center work without letting a broad UI milestone delay the sidecar.
 
 **Files from the existing roadmap:**
@@ -236,6 +240,18 @@ and frontend 54 passed. Both hosts produced reviewed diff SHA-256
 - No browser-triggered training, memory promotion, arbitrary host path, composite truth score, or robot control.
 
 **Finish line:** The browser can inspect the same evidence emitted by the CLI demo; it is not required for first use.
+
+**Implemented evidence:**
+- Fixed-location authenticated evaluation route with unavailable/unknown/stale/current states.
+- Strict rejection of malformed, oversized, and out-of-root report data without hidden labels.
+- Human-clear `EvaluationSummary` with provider/configuration, code/fixture revisions, equal
+  budgets, per-condition metrics/failures, and exact JSON.
+- Revalidated latest-export route and exact server-managed bundle selection for restore.
+- `WorkspaceOperations` with exact manifest entries/hashes and typed
+  `RESTORE <exact-export-id>` confirmation.
+- Real built frontend/FastAPI browser acceptance covering stale evidence, bounded scrolling,
+  verified export creation, disabled mismatched restore, exact confirmation, and visible
+  restore completion.
 
 ---
 
