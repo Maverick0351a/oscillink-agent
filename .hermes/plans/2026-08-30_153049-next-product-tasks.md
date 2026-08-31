@@ -173,8 +173,12 @@ At most three workstreams may be active:
 
 ## Task B4: Build the five-minute continuity demonstration
 
-**Status:** Implemented; local candidate verification passed with Python 353 passed / 4
-skipped and frontend 54 passed. Immutable-range and Buildbox exact-SHA verification remain.
+**Status:** Completed in `19f6a57` and exact-SHA verified locally and on Buildbox.
+Local immutable verification passed with Python 353 passed / 4 skipped and frontend 54
+passed. Detached Buildbox verification at
+`19f6a57ff5b9a6a7c65c7d4d70bd14b8ae80a95b` passed with Python 356 passed / 1 skipped
+and frontend 54 passed. Both hosts produced reviewed diff SHA-256
+`3a13234f13bc5b0fa17576abda963fa5313c14ade51735b3dabd30f5657ebdf8`.
 
 **Objective:** Prove the public promise with two real compatible clients before advertising five integrations.
 
